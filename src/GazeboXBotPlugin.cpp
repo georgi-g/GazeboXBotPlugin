@@ -35,9 +35,11 @@ void gazebo::GazeboXBotPlugin::Init()
     gazebo::ModelPlugin::Init();
     std::cout << "GazeboXBotPlugin Init()" << std::endl;     
         
+    std::string path_to_cfg("/home/alaurenzi/Code/robotology-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_upperbody.yaml");
+    
     // init XBotCoreModel
     // parse the YAML file to initialize internal variables
-    parseYAML("/home/lucamuratore/src/centauro-superbuild/configs/ADVR_shared/bigman/configs/config_walkman.yaml"); // TBD do it with plugin params
+    parseYAML(path_to_cfg); // TBD do it with plugin params
     
     // initialize the model
     if (!_XBotModel.init(_urdf_path, _srdf_path, _joint_map_config)) {
@@ -55,33 +57,43 @@ void gazebo::GazeboXBotPlugin::Init()
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
     }
+    
+    XBot::AnyMapPtr any_map = std::make_shared<XBot::AnyMap>();
+    (*any_map)["XBotJoint"] = std::shared_ptr<XBot::IXBotJoint>(this, [](XBot::IXBotJoint* ptr){} );
+    
+    _robot = XBot::RobotInterface::getRobot(path_to_cfg, any_map);
+    
+    
 
 }
 
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
-    // TBD run the RT plugin
-    float link_pos = -1;
-    get_link_pos( 11, link_pos);
-    std::cout << "Joint 11 - link_pos : " << link_pos << std::endl;
-    
-    float motor_pos = -1;
-    get_motor_pos( 11, motor_pos);
-    std::cout << "Joint 11 - motor_pos : " << motor_pos << std::endl;
-    
-    float link_vel = -1;
-    get_link_vel( 11, link_vel);
-    std::cout << "Joint 11 - link_vel : " << link_vel << std::endl;
-    
-    int16_t motor_vel = -1;
-    get_motor_vel( 11, motor_vel);
-    std::cout << "Joint 11 - motor_vel : " << motor_vel << std::endl;
-    
-    int16_t torque = -1;
-    get_torque( 11, torque);
-    std::cout << "Joint 11 - torque : " << torque << std::endl;
-    
+//     // TBD run the RT plugin
+//     float link_pos = -1;
+//     get_link_pos( 11, link_pos);
+//     std::cout << "Joint 11 - link_pos : " << link_pos << std::endl;
+//     
+//     float motor_pos = -1;
+//     get_motor_pos( 11, motor_pos);
+//     std::cout << "Joint 11 - motor_pos : " << motor_pos << std::endl;
+//     
+//     float link_vel = -1;
+//     get_link_vel( 11, link_vel);
+//     std::cout << "Joint 11 - link_vel : " << link_vel << std::endl;
+//     
+//     int16_t motor_vel = -1;
+//     get_motor_vel( 11, motor_vel);
+//     std::cout << "Joint 11 - motor_vel : " << motor_vel << std::endl;
+//     
+//     int16_t torque = -1;
+//     get_torque( 11, torque);
+//     std::cout << "Joint 11 - torque : " << torque << std::endl;
+//     
     set_pos_ref(11, std::cos(_world->GetSimTime().Double()));
+    
+    _robot->sense();
+    _robot->print();
 
 }
 

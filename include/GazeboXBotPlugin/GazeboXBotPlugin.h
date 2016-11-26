@@ -29,6 +29,8 @@
 #include <XBotCore/IXBotJoint.h>
 #include <XBotCoreModel.h>
 
+#include <XBotInterface/RobotInterface.h>
+
 namespace gazebo {
 class GazeboXBotPlugin : public ModelPlugin,
                          public XBot::IXBotJoint
@@ -55,7 +57,7 @@ public :
      * @param _argv Array of command line arguments.
      * @return void
      */
-    virtual  void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
+    virtual void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
         
     /**
      * @brief Called once after Load
@@ -87,6 +89,8 @@ private:
      std::string _urdf_path;
      std::string _srdf_path;
      std::string _joint_map_config;
+     
+     XBot::RobotInterface::Ptr _robot;
      
      // Gazebo joint names vector
      std::vector<std::string> _jointNames;
