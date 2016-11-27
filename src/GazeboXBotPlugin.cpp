@@ -55,13 +55,20 @@ void gazebo::GazeboXBotPlugin::Init()
         std::string gazebo_joint_name = gazebo_models_joints[gazebo_joint]->GetName();
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
+        gazebo::common::PID pid;
+        pid.Init(1000, 0, 100, 0, 0, 1000000, -1000000);
+        
+//         _model->GetJointController()->SetPositionPID(_jointMap.at(gazebo_joint_name)->GetScopedName(), pid);
+        
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
+        
     }
     
     XBot::AnyMapPtr any_map = std::make_shared<XBot::AnyMap>();
     (*any_map)["XBotJoint"] = std::shared_ptr<XBot::IXBotJoint>(this, [](XBot::IXBotJoint* ptr){} );
     
     _robot = XBot::RobotInterface::getRobot(path_to_cfg, any_map);
+    _robot->getRobotState("home", _q_home);
     
     
 
@@ -90,10 +97,13 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 //     get_torque( 11, torque);
 //     std::cout << "Joint 11 - torque : " << torque << std::endl;
 //     
-    set_pos_ref(11, std::cos(_world->GetSimTime().Double()));
+//     set_pos_ref(2, std::cos(_world->GetSimTime().Double()));
+    
     
     _robot->sense();
-    _robot->print();
+    _robot->setPositionReference(_q_home);
+    _robot->printTracking();
+    _robot->move();
 
 }
 
@@ -227,8 +237,11 @@ bool gazebo::GazeboXBotPlugin::set_pos_ref ( int joint_id, const float& pos_ref 
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     // TBD check PID
+    
+    
     _model->GetJointController()->SetPositionTarget(_jointMap.at(current_joint_name)->GetScopedName(), pos_ref);
     _model->GetJointController()->Update();
+
     return true;
 }
 

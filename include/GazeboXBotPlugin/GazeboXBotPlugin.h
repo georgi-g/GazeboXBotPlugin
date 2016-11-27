@@ -91,6 +91,7 @@ private:
      std::string _joint_map_config;
      
      XBot::RobotInterface::Ptr _robot;
+     Eigen::VectorXd _q_home;
      
      // Gazebo joint names vector
      std::vector<std::string> _jointNames;
