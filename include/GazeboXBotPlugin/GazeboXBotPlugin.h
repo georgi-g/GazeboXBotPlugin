@@ -31,6 +31,7 @@
 
 #include <XBotInterface/RobotInterface.h>
 
+
 namespace gazebo {
 class GazeboXBotPlugin : public ModelPlugin,
                          public XBot::IXBotJoint
@@ -89,9 +90,12 @@ private:
      std::string _urdf_path;
      std::string _srdf_path;
      std::string _joint_map_config;
+     std::string _path_to_config;
+     std::vector<std::string> _plugin_vector;
      
      XBot::RobotInterface::Ptr _robot;
-     Eigen::VectorXd _q_home;
+     Eigen::VectorXd _q_home, _q0;
+     double _previous_time;
      
      // Gazebo joint names vector
      std::vector<std::string> _jointNames;
@@ -112,6 +116,9 @@ private:
      
      // Pointer to the update event connection
      event::ConnectionPtr _updateConnection;
+     
+     // pointer to sdf 
+     sdf::ElementPtr _sdf;
      
      // NOTE IXBotJoint getters
     virtual bool get_link_pos(int joint_id, float& link_pos) final;

@@ -24,18 +24,35 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     _world = _model->GetWorld();
       
     // Listen to the update event. This event is broadcast every
-    // simulation iteration.
+    // simulation iteration
     _updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&GazeboXBotPlugin::XBotUpdate, this, _1));
+    
+    // save the sdf handle
+    this->_sdf = _sdf;
+    
+    if( !_sdf->HasElement("path_to_config_file") ){
+        std::cerr << "ERROR in " << __func__ << "! Missing element path_to_config_file!" << std::endl;
+        return;
+    }
+    
+    _path_to_config = _sdf->GetElement("path_to_config_file")->Get<std::string>();
+    
+    computeAbsolutePath(_path_to_config, "/", _path_to_config);
     
 
 }
+    
+
+
 
 void gazebo::GazeboXBotPlugin::Init()
 {
     gazebo::ModelPlugin::Init();
     std::cout << "GazeboXBotPlugin Init()" << std::endl;     
         
-    std::string path_to_cfg("/home/alaurenzi/Code/robotology-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_upperbody.yaml");
+    std::string path_to_cfg("/home/alaurenzi/Code/robotology-superbuild/configs/ADVR_shared/centauro/configs/config_centauro-rt_upperbody.yaml");
+    
+    path_to_cfg = _path_to_config;
     
     // init XBotCoreModel
     // parse the YAML file to initialize internal variables
@@ -56,9 +73,9 @@ void gazebo::GazeboXBotPlugin::Init()
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
         gazebo::common::PID pid;
-        pid.Init(1000, 0, 100, 0, 0, 1000000, -1000000);
+        pid.Init(600, 0, 3, 0, 0, 10000, -10000);
         
-//         _model->GetJointController()->SetPositionPID(_jointMap.at(gazebo_joint_name)->GetScopedName(), pid);
+        _model->GetJointController()->SetPositionPID(_jointMap.at(gazebo_joint_name)->GetScopedName(), pid);
         
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
         
@@ -69,6 +86,11 @@ void gazebo::GazeboXBotPlugin::Init()
     
     _robot = XBot::RobotInterface::getRobot(path_to_cfg, any_map);
     _robot->getRobotState("home", _q_home);
+    _robot->sense();
+    _robot->getJointPosition(_q0);
+    
+    _previous_time = _world->GetSimTime().Double();
+    
     
     
 
@@ -78,7 +100,7 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
 //     // TBD run the RT plugin
 //     float link_pos = -1;
-//     get_link_pos( 11, link_pos);
+// //     get_link_pos( 11, link_pos);
 //     std::cout << "Joint 11 - link_pos : " << link_pos << std::endl;
 //     
 //     float motor_pos = -1;
@@ -98,12 +120,15 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 //     std::cout << "Joint 11 - torque : " << torque << std::endl;
 //     
 //     set_pos_ref(2, std::cos(_world->GetSimTime().Double()));
-    
+    double time = _world->GetSimTime().Double();
+    std::cout << "DT = " << time - _previous_time << std::endl;
+    _previous_time = time;
     
     _robot->sense();
-    _robot->setPositionReference(_q_home);
+    _robot->setPositionReference(_q0 + 0.5*(1-std::cos(_world->GetSimTime().Double()))*(_q_home-_q0));
     _robot->printTracking();
     _robot->move();
+    _model->GetJointController()->Update();
 
 }
 
@@ -240,7 +265,7 @@ bool gazebo::GazeboXBotPlugin::set_pos_ref ( int joint_id, const float& pos_ref 
     
     
     _model->GetJointController()->SetPositionTarget(_jointMap.at(current_joint_name)->GetScopedName(), pos_ref);
-    _model->GetJointController()->Update();
+    
 
     return true;
 }
