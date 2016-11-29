@@ -88,6 +88,8 @@ void gazebo::GazeboXBotPlugin::Init()
     _robot->getRobotState("home", _q_home);
     _robot->sense();
     _robot->getJointPosition(_q0);
+    _robot->setPositionReference(_q0);
+    _robot->move();
     
     _previous_time = _world->GetSimTime().Double();
     
@@ -119,16 +121,16 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 //     get_torque( 11, torque);
 //     std::cout << "Joint 11 - torque : " << torque << std::endl;
 //     
-//     set_pos_ref(2, std::cos(_world->GetSimTime().Double()));
-    double time = _world->GetSimTime().Double();
-    std::cout << "DT = " << time - _previous_time << std::endl;
-    _previous_time = time;
-    
+//     set_pos_ref(_robot->chain("left_arm").getJointId(3), std::sin(_world->GetSimTime().Double()));
+//     double time = _world->GetSimTime().Double();
+//     std::cout << "DT = " << time - _previous_time << std::endl;
+//     _previous_time = time;
+//     
     _robot->sense();
     _robot->setPositionReference(_q0 + 0.5*(1-std::cos(_world->GetSimTime().Double()))*(_q_home-_q0));
-    _robot->printTracking();
+//     _robot->print();
     _robot->move();
-    _model->GetJointController()->Update();
+
 
 }
 
@@ -265,6 +267,7 @@ bool gazebo::GazeboXBotPlugin::set_pos_ref ( int joint_id, const float& pos_ref 
     
     
     _model->GetJointController()->SetPositionTarget(_jointMap.at(current_joint_name)->GetScopedName(), pos_ref);
+    _model->GetJointController()->Update();
     
 
     return true;
