@@ -182,8 +182,8 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
 {
     
     std::shared_ptr<XBot::IXBotModel> actual_model = std::make_shared<XBot::XBotCoreModel>(_XBotModel);
-    std::shared_ptr<XBot::IXBotChain> actual_chain(this); // TBD ? [](XBot::IXBotChain* ptr){return;}
-    std::shared_ptr<XBot::IXBotRobot> actual_robot(this);
+    std::shared_ptr<XBot::IXBotChain> actual_chain(this,  [](XBot::IXBotChain* ptr){return;});
+    std::shared_ptr<XBot::IXBotRobot> actual_robot(this, [](XBot::IXBotRobot* ptr){return;});
     std::shared_ptr<XBot::IXBotFT> actual_ft;
     
     bool ret = true;
@@ -205,7 +205,7 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
     for( const auto& plugin : _rtplugin_vector ){
-        (*plugin)->run(0, -1); // TBD actual time
+        (*plugin)->run(_world->GetSimTime().Double(), -1); // TBD actual time
     }
 }
 
