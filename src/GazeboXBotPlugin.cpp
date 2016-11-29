@@ -11,6 +11,12 @@ gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 gazebo::GazeboXBotPlugin::~GazeboXBotPlugin()
 {
     std::cout << "~GazeboXBotPlugin()" << std::endl;
+    
+    for( const auto& plugin : _rtplugin_vector ){
+        (*plugin)->close();
+    }
+    
+    
 }
 
 void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
@@ -20,16 +26,16 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     // Store the pointer to the model
     _model = _parent;
     
-    // get the world
+    // Get a handle to the world
     _world = _model->GetWorld();
       
-    // Listen to the update event. This event is broadcast every
-    // simulation iteration
+    // Listen to the update event. This event is broadcast every simulation iteration
     _updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&GazeboXBotPlugin::XBotUpdate, this, _1));
     
-    // save the sdf handle
+    // Save the SDF handle
     this->_sdf = _sdf;
     
+    // Get the path to config file from SDF
     if( !_sdf->HasElement("path_to_config_file") ){
         std::cerr << "ERROR in " << __func__ << "! Missing element path_to_config_file!" << std::endl;
         return;
@@ -38,7 +44,6 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     _path_to_config = _sdf->GetElement("path_to_config_file")->Get<std::string>();
     
     computeAbsolutePath(_path_to_config, "/", _path_to_config);
-    
 
 }
     
@@ -56,7 +61,11 @@ void gazebo::GazeboXBotPlugin::Init()
     
     // init XBotCoreModel
     // parse the YAML file to initialize internal variables
-    parseYAML(path_to_cfg); // TBD do it with plugin params
+    parseYAML(path_to_cfg); 
+    
+    // Load plugins
+    loadPlugins();
+    
     
     // initialize the model
     if (!_XBotModel.init(_urdf_path, _srdf_path, _joint_map_config)) {
@@ -73,65 +82,107 @@ void gazebo::GazeboXBotPlugin::Init()
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
         gazebo::common::PID pid;
-        pid.Init(600, 0, 3, 0, 0, 10000, -10000);
+        pid.Init(600, 0, 3);
         
         _model->GetJointController()->SetPositionPID(_jointMap.at(gazebo_joint_name)->GetScopedName(), pid);
         
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
         
     }
-    
-    XBot::AnyMapPtr any_map = std::make_shared<XBot::AnyMap>();
-    (*any_map)["XBotJoint"] = std::shared_ptr<XBot::IXBotJoint>(this, [](XBot::IXBotJoint* ptr){} );
-    
-    _robot = XBot::RobotInterface::getRobot(path_to_cfg, any_map);
-    _robot->getRobotState("home", _q_home);
-    _robot->sense();
-    _robot->getJointPosition(_q0);
-    _robot->setPositionReference(_q0);
-    _robot->move();
-    
-    _previous_time = _world->GetSimTime().Double();
-    
-    
-    
+
 
 }
 
+bool gazebo::GazeboXBotPlugin::loadPlugins()
+{
+    
+    if(!_root_cfg["XBotRTPlugins"]){
+        std::cerr << "ERROR in " << __func__ << "! Config file does NOT contain mandatory node XBotRTPlugins!" << std::endl;
+        return false;
+    }
+    else{
+        
+        if(!_root_cfg["XBotRTPlugins"]["plugins"]){
+            std::cerr << "ERROR in " << __func__ << "!XBotRTPlugins node does NOT contain mandatory node plugins!" << std::endl;
+        return false;
+        }
+        else{
+            
+            for(const auto& plugin : _root_cfg["XBotRTPlugins"]["plugins"]){
+                _rtplugin_names.push_back(plugin.as<std::string>());
+            }
+        }
+        
+    }
+    
+
+    
+    bool success = true;
+    
+    for( const std::string& plugin_name : _rtplugin_names ){
+        
+        std::string path_to_so;
+        computeAbsolutePath(plugin_name, "/build/install/lib/lib", path_to_so);
+        path_to_so += std::string(".so");
+        
+        std::string factory_name = plugin_name + std::string("_factory");
+        
+        auto factory_ptr = std::make_shared<shlibpp::SharedLibraryClassFactory<XBot::XBotPlugin>>(path_to_so.c_str(), factory_name.c_str());
+        
+        if (!factory_ptr->isValid()) {
+            // NOTE print to celebrate the wizard
+            printf("error (%s) : %s\n", shlibpp::Vocab::decode(factory_ptr->getStatus()).c_str(),
+                factory_ptr->getLastNativeError().c_str());
+            std::cerr << "Unable to load plugin " << plugin_name << "!" << std::endl;
+            success = false;
+            continue;
+        }
+        else{
+            std::cout << "Found plugin " << plugin_name << "!" << std::endl;
+        }
+        
+        _rtplugin_factory.push_back(factory_ptr);
+        
+        auto plugin_ptr = std::make_shared<shlibpp::SharedLibraryClass<XBot::XBotPlugin>>(*factory_ptr);
+        
+        _rtplugin_vector.push_back(plugin_ptr);
+
+    }
+
+    return success;
+    
+    
+    
+}
+
+bool gazebo::GazeboXBotPlugin::initPlugins()
+{
+    
+    std::shared_ptr<XBot::IXBotModel> actual_model = std::make_shared<XBot::XBotCoreModel>(_XBotModel);
+    std::shared_ptr<XBot::IXBotChain> actual_chain; // TBD ? [](XBot::IXBotChain* ptr){return;}
+    std::shared_ptr<XBot::IXBotRobot> actual_robot;
+    std::shared_ptr<XBot::IXBotFT> actual_ft;
+    
+    bool ret = true;
+    for(int i = 0; i < _rtplugin_vector.size(); i++) {
+        if(!(*_rtplugin_vector[i])->init( _rtplugin_names[i],
+                                actual_model, 
+                                actual_chain,
+                                actual_robot,
+                                actual_ft)) {
+            DPRINTF("ERROR: plugin %s - init() failed\n", (*_rtplugin_vector[i])->name.c_str());
+            ret = false;
+        }
+    }
+    return ret;
+}
+
+
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
-//     // TBD run the RT plugin
-//     float link_pos = -1;
-// //     get_link_pos( 11, link_pos);
-//     std::cout << "Joint 11 - link_pos : " << link_pos << std::endl;
-//     
-//     float motor_pos = -1;
-//     get_motor_pos( 11, motor_pos);
-//     std::cout << "Joint 11 - motor_pos : " << motor_pos << std::endl;
-//     
-//     float link_vel = -1;
-//     get_link_vel( 11, link_vel);
-//     std::cout << "Joint 11 - link_vel : " << link_vel << std::endl;
-//     
-//     int16_t motor_vel = -1;
-//     get_motor_vel( 11, motor_vel);
-//     std::cout << "Joint 11 - motor_vel : " << motor_vel << std::endl;
-//     
-//     int16_t torque = -1;
-//     get_torque( 11, torque);
-//     std::cout << "Joint 11 - torque : " << torque << std::endl;
-//     
-//     set_pos_ref(_robot->chain("left_arm").getJointId(3), std::sin(_world->GetSimTime().Double()));
-//     double time = _world->GetSimTime().Double();
-//     std::cout << "DT = " << time - _previous_time << std::endl;
-//     _previous_time = time;
-//     
-    _robot->sense();
-    _robot->setPositionReference(_q0 + 0.5*(1-std::cos(_world->GetSimTime().Double()))*(_q_home-_q0));
-//     _robot->print();
-    _robot->move();
-
-
+    for( const auto& plugin : _rtplugin_vector ){
+        (*plugin)->run();
+    }
 }
 
 void gazebo::GazeboXBotPlugin::Reset()
@@ -331,10 +382,10 @@ bool gazebo::GazeboXBotPlugin::parseYAML ( const std::string& path_to_cfg )
     }
     
 
-    YAML::Node root_cfg = YAML::LoadFile(path_to_cfg);
+    _root_cfg = YAML::LoadFile(path_to_cfg);
     YAML::Node x_bot_interface;
-    if(root_cfg["XBotInterface"]) {
-        x_bot_interface = root_cfg["XBotInterface"]; 
+    if(_root_cfg["XBotInterface"]) {
+        x_bot_interface = _root_cfg["XBotInterface"]; 
     }
     else {
         std::cerr << "ERROR in " << __func__ << " : YAML file  " << path_to_cfg << "  does not contain XBotInterface mandatory node!!" << std::endl;
@@ -373,6 +424,8 @@ bool gazebo::GazeboXBotPlugin::parseYAML ( const std::string& path_to_cfg )
         std::cerr << "ERROR in " << __func__ << " : XBotInterface node of  " << path_to_cfg << "  does not contain joint_map_path mandatory node!!" << std::endl;
         return false;
     }
+    
+    
 
 }
 

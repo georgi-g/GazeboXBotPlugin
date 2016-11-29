@@ -26,10 +26,14 @@
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
 
+#include <XBotCore/XBotPlugin.h>
 #include <XBotCore/IXBotJoint.h>
 #include <XBotCoreModel.h>
 
 #include <XBotInterface/RobotInterface.h>
+#include <SharedLibraryClassFactory.h>
+
+
 
 
 namespace gazebo {
@@ -76,12 +80,17 @@ public :
 
 private:
 
-     /**
-      * @brief 
-      * 
-      * @return void
-      */
      void XBotUpdate(const common::UpdateInfo & _info);
+     
+     bool parseYAML ( const std::string &path_to_cfg ); // TBD do it with UTILS
+     
+     static bool computeAbsolutePath ( const std::string& input_path,
+                                       const std::string& midlle_path,
+                                       std::string& absolute_path ); // TBD do it with UTILS
+     
+     bool loadPlugins();
+     
+     bool initPlugins();
      
      // internal XBotCoreModel object: it does the trick using URDF, SRDF and joint map configuration
      XBot::XBotCoreModel _XBotModel;
@@ -91,23 +100,23 @@ private:
      std::string _srdf_path;
      std::string _joint_map_config;
      std::string _path_to_config;
-     std::vector<std::string> _plugin_vector;
      
+     YAML::Node _root_cfg;
+     
+     // Dynamic loading related variables
+     std::vector<std::shared_ptr<shlibpp::SharedLibraryClassFactory<XBot::XBotPlugin>>> _rtplugin_factory;
+     std::vector<std::string> _rtplugin_names;
+     std::vector<std::shared_ptr<shlibpp::SharedLibraryClass<XBot::XBotPlugin>>> _rtplugin_vector;
+     
+     // RobotInterface instance
      XBot::RobotInterface::Ptr _robot;
-     Eigen::VectorXd _q_home, _q0;
-     double _previous_time;
      
      // Gazebo joint names vector
      std::vector<std::string> _jointNames;
      
      // Gazebo joint map
      std::map<std::string, gazebo::physics::JointPtr> _jointMap;
-     
-     bool parseYAML ( const std::string &path_to_cfg ); // TBD do it with UTILS
-     static bool computeAbsolutePath ( const std::string& input_path,
-                                       const std::string& midlle_path,
-                                       std::string& absolute_path ); // TBD do it with UTILS
-     
+
      // model
      physics::ModelPtr _model;
      
