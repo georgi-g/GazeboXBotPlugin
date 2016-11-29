@@ -28,6 +28,9 @@
 
 #include <XBotCore/XBotPlugin.h>
 #include <XBotCore/IXBotJoint.h>
+#include <XBotCore/IXBotChain.h>
+#include <XBotCore/IXBotRobot.h>
+
 #include <XBotCoreModel.h>
 
 #include <XBotInterface/RobotInterface.h>
@@ -38,7 +41,9 @@
 
 namespace gazebo {
 class GazeboXBotPlugin : public ModelPlugin,
-                         public XBot::IXBotJoint
+                         public XBot::IXBotJoint,
+                         public XBot::IXBotChain,
+                         public XBot::IXBotRobot
 
 {
 
@@ -78,6 +83,120 @@ public :
      */
     virtual void Reset();
 
+protected:
+    
+    // NOTE IXBotRobot getters
+    virtual bool get_robot_link_pos(std::map<std::string, float>& link_pos) final;
+    virtual bool get_robot_link_pos(std::map<int, float>& link_pos) final;
+    
+    virtual bool get_robot_motor_pos(std::map<std::string, float>& motor_pos) final;
+    virtual bool get_robot_motor_pos(std::map<int, float>& motor_pos) final;
+    
+    virtual bool get_robot_link_vel(std::map<std::string, float>& link_vel) final;
+    virtual bool get_robot_link_vel(std::map<int, float>& link_vel) final;
+    
+    virtual bool get_robot_motor_vel(std::map<std::string, int16_t>& motor_vel) final;
+    virtual bool get_robot_motor_vel(std::map<int, int16_t>& motor_vel) final;
+    
+    virtual bool get_robot_torque(std::map<std::string, int16_t>& torque) final;
+    virtual bool get_robot_torque(std::map<int, int16_t>& torque) final;
+    
+    virtual bool get_robot_max_temperature(std::map<int, uint16_t>& max_temperature) final;    
+    virtual bool get_robot_max_temperature(std::map<std::string, uint16_t>& max_temperature) final;
+    
+    virtual bool get_robot_fault(std::map<int, uint16_t>& fault) final;    
+    virtual bool get_robot_fault(std::map<std::string, uint16_t>& fault) final;
+
+    virtual bool get_robot_rtt(std::map<int, uint16_t>& rtt) final;    
+    virtual bool get_robot_rtt(std::map<std::string, uint16_t>& rtt) final;
+    
+    virtual bool get_robot_op_idx_ack(std::map<int, uint16_t>& op_idx_ack) final;    
+    virtual bool get_robot_op_idx_ack(std::map<std::string, uint16_t>& op_idx_ack) final;
+    
+    virtual bool get_robot_aux(std::map<std::string, float>& aux) final;
+    virtual bool get_robot_aux(std::map<int, float>& aux) final;
+
+    // NOTE IXBotRobot setters
+    virtual bool set_robot_pos_ref(const std::map<std::string, float>& pos_ref) final;
+    virtual bool set_robot_pos_ref(const std::map<int, float>& pos_ref) final;
+    
+    virtual bool set_robot_vel_ref(const std::map<std::string, int16_t>& vel_ref) final;
+    virtual bool set_robot_vel_ref(const std::map<int, int16_t>& vel_ref) final;
+    
+    virtual bool set_robot_tor_ref(const std::map<std::string, int16_t>& tor_ref) final;
+    virtual bool set_robot_tor_ref(const std::map<int, int16_t>& tor_ref) final;
+    
+    virtual bool set_robot_gains(const std::map<std::string, std::vector<uint16_t> >& gains) final;
+    virtual bool set_robot_gains(const std::map<int, std::vector<uint16_t> >& gains) final;
+    
+    virtual bool set_robot_fault_ack(const std::map<std::string, int16_t>& fault_ack) final;
+    virtual bool set_robot_fault_ack(const std::map<int, int16_t>& fault_ack) final;
+    
+    virtual bool set_robot_ts(const std::map<int, uint16_t>& ts) final;    
+    virtual bool set_robot_ts(const std::map<std::string, uint16_t>& ts) final;
+    
+    virtual bool set_robot_op_idx_aux(const std::map<int, uint16_t>& op_idx_aux) final;    
+    virtual bool set_robot_op_idx_aux(const std::map<std::string, uint16_t>& op_idx_aux) final;
+    
+    virtual bool set_robot_aux(const std::map<std::string, float>& aux) final;
+    virtual bool set_robot_aux(const std::map<int, float>& aux) final;
+
+    // NOTE IXBotChain getters
+    virtual bool get_chain_link_pos(std::string chain_name, std::map<std::string, float>& link_pos) final;
+    virtual bool get_chain_link_pos(std::string chain_name, std::map<int, float>& link_pos) final;
+    
+    virtual bool get_chain_motor_pos(std::string chain_name, std::map<std::string, float>& motor_pos) final;
+    virtual bool get_chain_motor_pos(std::string chain_name, std::map<int, float>& motor_pos) final;
+    
+    virtual bool get_chain_link_vel(std::string chain_name, std::map<std::string, float>& link_vel) final;
+    virtual bool get_chain_link_vel(std::string chain_name, std::map<int, float>& link_vel) final;
+    
+    virtual bool get_chain_motor_vel(std::string chain_name, std::map<std::string, int16_t>& motor_vel) final;
+    virtual bool get_chain_motor_vel(std::string chain_name, std::map<int, int16_t>& motor_vel) final;
+    
+    virtual bool get_chain_torque(std::string chain_name, std::map<std::string, int16_t>& torque) final;
+    virtual bool get_chain_torque(std::string chain_name, std::map<int, int16_t>& torque) final;
+    
+    virtual bool get_chain_max_temperature(std::string chain_name, std::map<int, uint16_t>& max_temperature) final;    
+    virtual bool get_chain_max_temperature(std::string chain_name, std::map<std::string, uint16_t>& max_temperature) final;
+    
+    virtual bool get_chain_fault(std::string chain_name, std::map<int, uint16_t>& fault) final;    
+    virtual bool get_chain_fault(std::string chain_name, std::map<std::string, uint16_t>& fault) final;
+
+    virtual bool get_chain_rtt(std::string chain_name, std::map<int, uint16_t>& rtt) final;    
+    virtual bool get_chain_rtt(std::string chain_name, std::map<std::string, uint16_t>& rtt) final;
+    
+    virtual bool get_chain_op_idx_ack(std::string chain_name, std::map<int, uint16_t>& op_idx_ack) final;    
+    virtual bool get_chain_op_idx_ack(std::string chain_name, std::map<std::string, uint16_t>& op_idx_ack) final;
+    
+    virtual bool get_chain_aux(std::string chain_name, std::map<std::string, float>& aux) final;
+    virtual bool get_chain_aux(std::string chain_name, std::map<int, float>& aux) final;
+    
+    // NOTE IXBotChain setters
+    virtual bool set_chain_pos_ref(std::string chain_name, const std::map<std::string, float>& pos_ref) final;
+    virtual bool set_chain_pos_ref(std::string chain_name, const std::map<int, float>& pos_ref) final;
+    
+    virtual bool set_chain_vel_ref(std::string chain_name, const std::map<std::string, int16_t>& vel_ref) final;
+    virtual bool set_chain_vel_ref(std::string chain_name, const std::map<int, int16_t>& vel_ref) final;
+    
+    virtual bool set_chain_tor_ref(std::string chain_name, const std::map<std::string, int16_t>& tor_ref) final;
+    virtual bool set_chain_tor_ref(std::string chain_name, const std::map<int, int16_t>& tor_ref) final;
+    
+    virtual bool set_chain_gains(std::string chain_name, const std::map<std::string, std::vector<uint16_t> >& gains) final;
+    virtual bool set_chain_gains(std::string chain_name, const std::map<int, std::vector<uint16_t> >& gains) final;
+    
+    virtual bool set_chain_fault_ack(std::string chain_name, const std::map<std::string, int16_t>& fault_ack) final;
+    virtual bool set_chain_fault_ack(std::string chain_name, const std::map<int, int16_t>& fault_ack) final;
+    
+    virtual bool set_chain_ts(std::string chain_name, const std::map<int, uint16_t>& ts) final;    
+    virtual bool set_chain_ts(std::string chain_name, const std::map<std::string, uint16_t>& ts) final;
+    
+    virtual bool set_chain_op_idx_aux(std::string chain_name, const std::map<int, uint16_t>& op_idx_aux) final;    
+    virtual bool set_chain_op_idx_aux(std::string chain_name, const std::map<std::string, uint16_t>& op_idx_aux) final;
+    
+    virtual bool set_chain_aux(std::string chain_name, const std::map<std::string, float>& aux) final;
+    virtual bool set_chain_aux(std::string chain_name, const std::map<int, float>& aux) final;
+
 private:
 
      void XBotUpdate(const common::UpdateInfo & _info);
@@ -94,6 +213,8 @@ private:
      
      // internal XBotCoreModel object: it does the trick using URDF, SRDF and joint map configuration
      XBot::XBotCoreModel _XBotModel;
+     
+     std::map<std::string, std::vector<int>> _XBotRobot;
      
      // URDF SRDF and Joint Map Configuration
      std::string _urdf_path;
