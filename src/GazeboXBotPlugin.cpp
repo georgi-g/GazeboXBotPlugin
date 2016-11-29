@@ -1,3 +1,23 @@
+/*
+ * Copyright (C) 2016 IIT-ADVR
+ * Author: Arturo Laurenzi, Luca Muratore
+ * email:  arturo.laurenzi@iit.it, luca.muratore@iit.it
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
+*/
+
+
 #include<GazeboXBotPlugin/GazeboXBotPlugin.h>
 
 #include<iostream>
@@ -66,6 +86,8 @@ void gazebo::GazeboXBotPlugin::Init()
     // Load plugins
     loadPlugins();
     
+    // Init plugins
+    initPlugins();
     
     // initialize the model
     if (!_XBotModel.init(_urdf_path, _srdf_path, _joint_map_config)) {
@@ -165,7 +187,8 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
     
     bool ret = true;
     for(int i = 0; i < _rtplugin_vector.size(); i++) {
-        if(!(*_rtplugin_vector[i])->init( _rtplugin_names[i],
+        if(!(*_rtplugin_vector[i])->init( _path_to_config,
+                                _rtplugin_names[i],
                                 actual_model, 
                                 actual_chain,
                                 actual_robot,
@@ -181,7 +204,7 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
     for( const auto& plugin : _rtplugin_vector ){
-        (*plugin)->run();
+        (*plugin)->run(0, -1); // TBD actual time
     }
 }
 
