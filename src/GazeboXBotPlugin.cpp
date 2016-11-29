@@ -182,8 +182,8 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
 {
     
     std::shared_ptr<XBot::IXBotModel> actual_model = std::make_shared<XBot::XBotCoreModel>(_XBotModel);
-    std::shared_ptr<XBot::IXBotChain> actual_chain; // TBD ? [](XBot::IXBotChain* ptr){return;}
-    std::shared_ptr<XBot::IXBotRobot> actual_robot;
+    std::shared_ptr<XBot::IXBotChain> actual_chain(this); // TBD ? [](XBot::IXBotChain* ptr){return;}
+    std::shared_ptr<XBot::IXBotRobot> actual_robot(this);
     std::shared_ptr<XBot::IXBotFT> actual_ft;
     
     bool ret = true;
