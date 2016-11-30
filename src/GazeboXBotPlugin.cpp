@@ -182,6 +182,8 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
 {
     
     std::shared_ptr<XBot::IXBotModel> actual_model = std::make_shared<XBot::XBotCoreModel>(_XBotModel);
+    
+    std::shared_ptr<XBot::IXBotJoint> actual_joint(this,  [](XBot::IXBotJoint* ptr){return;});
     std::shared_ptr<XBot::IXBotChain> actual_chain(this,  [](XBot::IXBotChain* ptr){return;});
     std::shared_ptr<XBot::IXBotRobot> actual_robot(this, [](XBot::IXBotRobot* ptr){return;});
     std::shared_ptr<XBot::IXBotFT> actual_ft;
@@ -190,6 +192,7 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
     for(int i = 0; i < _rtplugin_vector.size(); i++) {
         if(!(*_rtplugin_vector[i])->init( _path_to_config,
                                 _rtplugin_names[i],
+                                actual_joint,
                                 actual_model, 
                                 actual_chain,
                                 actual_robot,
