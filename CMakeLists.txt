@@ -5,18 +5,16 @@ find_package(gazebo REQUIRED)
 find_package(XBotCoreModel REQUIRED)
 find_package(XBotCore REQUIRED)
 find_package(boost QUIET)
-
-# TBD do it dynamically
-find_package(RobotInterfaceXBotRT_test REQUIRED)
+find_package(XBotInterface REQUIRED)
+find_package(sharedlibpp REQUIRED)
 
 
 include_directories(include
                     ${GAZEBO_INCLUDE_DIRS} 
+                    ${XBotInterface_INCLUDE_DIRS}
                     ${XBotCore_INCLUDE_DIRS}
-                    
-                    ${RobotInterfaceXBotRT_test_INCLUDE_DIRS}
+                    ${sharedlibpp_INCLUDE_DIRS}
                     )
-                    
 link_directories(${GAZEBO_LIBRARY_DIRS} ) 
 
 list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
@@ -27,9 +25,9 @@ add_library(GazeboXBotPlugin SHARED src/GazeboXBotPlugin.cpp)
 target_link_libraries(GazeboXBotPlugin ${GAZEBO_LIBRARIES} 
                                        ${Boost_LIBRARIES} 
                                        ${XBotCoreModel_LIBRARIES}
+                                       ${XBotInterface_LIBRARIES}
+                                       ${sharedlibpp_LIBRARIES}
                                        yaml-cpp 
-                                       
-                                       ${RobotInterfaceXBotRT_test_LIBRARIES}
                                        )
 
 

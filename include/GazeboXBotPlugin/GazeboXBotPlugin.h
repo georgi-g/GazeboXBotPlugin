@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2016 Walkman
- * Author: Luca Muratore
- * email:  luca.muratore@iit.it
+ * Copyright (C) 2016 IIT-ADVR
+ * Author: Arturo Laurenzi, Luca Muratore
+ * email:  arturo.laurenzi@iit.it, luca.muratore@iit.it
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -26,18 +26,24 @@
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
 
-#include <XBotCore/XBotPlugin.hpp>
+#include <XBotCore/XBotPlugin.h>
 #include <XBotCore/IXBotJoint.h>
+#include <XBotCore/IXBotChain.h>
+#include <XBotCore/IXBotRobot.h>
+
 #include <XBotCoreModel.h>
 
-#include <time.h>
+#include <XBotInterface/RobotInterface.h>
+#include <SharedLibraryClassFactory.h>
+
+
+
 
 namespace gazebo {
 class GazeboXBotPlugin : public ModelPlugin,
                          public XBot::IXBotJoint,
                          public XBot::IXBotChain,
-                         public XBot::IXBotRobot,
-                         public XBot::IXBotFT
+                         public XBot::IXBotRobot
 
 {
 
@@ -61,7 +67,7 @@ public :
      * @param _argv Array of command line arguments.
      * @return void
      */
-    virtual  void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
+    virtual void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
         
     /**
      * @brief Called once after Load
@@ -76,6 +82,8 @@ public :
      * @return void
      */
     virtual void Reset();
+
+protected:
     
     // NOTE IXBotRobot getters
     virtual bool get_robot_link_pos(std::map<std::string, float>& link_pos) final;
@@ -132,7 +140,7 @@ public :
     
     virtual bool set_robot_aux(const std::map<std::string, float>& aux) final;
     virtual bool set_robot_aux(const std::map<int, float>& aux) final;
-    
+
     // NOTE IXBotChain getters
     virtual bool get_chain_link_pos(std::string chain_name, std::map<std::string, float>& link_pos) final;
     virtual bool get_chain_link_pos(std::string chain_name, std::map<int, float>& link_pos) final;
@@ -188,40 +196,48 @@ public :
     
     virtual bool set_chain_aux(std::string chain_name, const std::map<std::string, float>& aux) final;
     virtual bool set_chain_aux(std::string chain_name, const std::map<int, float>& aux) final;
-    
-    // NOTE IXBotFT getters
-    virtual bool get_ft(int ft_id, std::vector< float >& ft, int channels = 6) final;
-    virtual bool get_ft_fault(int ft_id, uint16_t& fault) final;
-    virtual bool get_ft_rtt(int ft_id, uint16_t& rtt) final;
 
 private:
 
-     /**
-      * @brief 
-      * 
-      * @return void
-      */
      void XBotUpdate(const common::UpdateInfo & _info);
+     
+     bool parseYAML ( const std::string &path_to_cfg ); // TBD do it with UTILS
+     
+     static bool computeAbsolutePath ( const std::string& input_path,
+                                       const std::string& midlle_path,
+                                       std::string& absolute_path ); // TBD do it with UTILS
+     
+     bool loadPlugins();
+     
+     bool initPlugins();
      
      // internal XBotCoreModel object: it does the trick using URDF, SRDF and joint map configuration
      XBot::XBotCoreModel _XBotModel;
+     
+     std::map<std::string, std::vector<int>> _XBotRobot;
      
      // URDF SRDF and Joint Map Configuration
      std::string _urdf_path;
      std::string _srdf_path;
      std::string _joint_map_config;
+     std::string _path_to_config;
+     
+     YAML::Node _root_cfg;
+     
+     // Dynamic loading related variables
+     std::vector<std::shared_ptr<shlibpp::SharedLibraryClassFactory<XBot::XBotPlugin>>> _rtplugin_factory;
+     std::vector<std::string> _rtplugin_names;
+     std::vector<std::shared_ptr<shlibpp::SharedLibraryClass<XBot::XBotPlugin>>> _rtplugin_vector;
+     
+     // RobotInterface instance
+     XBot::RobotInterface::Ptr _robot;
      
      // Gazebo joint names vector
      std::vector<std::string> _jointNames;
      
      // Gazebo joint map
      std::map<std::string, gazebo::physics::JointPtr> _jointMap;
-     
-     bool parseYAML ( const std::string &path_to_cfg ); // TBD do it with UTILS
-     static bool computeAbsolutePath ( const std::string& input_path,
-                                       const std::string& midlle_path,
-                                       std::string& absolute_path ); // TBD do it with UTILS
-     
+
      // model
      physics::ModelPtr _model;
      
@@ -230,6 +246,9 @@ private:
      
      // Pointer to the update event connection
      event::ConnectionPtr _updateConnection;
+     
+     // pointer to sdf 
+     sdf::ElementPtr _sdf;
      
      // NOTE IXBotJoint getters
     virtual bool get_link_pos(int joint_id, float& link_pos) final;
@@ -268,14 +287,8 @@ private:
     virtual bool set_op_idx_aux(int joint_id, const uint16_t& op_idx_aux) final;
     
     virtual bool set_aux(int joint_id, const float& aux) final;
-    
-    
-    uint64_t get_time_ns(clockid_t clock_id=CLOCK_MONOTONIC);
-    
-    
-    std::map<std::string, std::vector<int>> robot_map;
 
-    std::vector< std::shared_ptr<XBot::XBotPlugin> > plugins; 
+
 };
 
 // Register this plugin with the simulator
