@@ -229,6 +229,10 @@ private:
      std::vector<std::string> _rtplugin_names;
      std::vector<std::shared_ptr<shlibpp::SharedLibraryClass<XBot::XBotPlugin>>> _rtplugin_vector;
      
+     std::vector<double> _last_time, _time, _period, _elapsed_time;
+     bool _first_loop;
+    
+     
      // RobotInterface instance
      XBot::RobotInterface::Ptr _robot;
      

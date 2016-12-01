@@ -106,13 +106,19 @@ void gazebo::GazeboXBotPlugin::Init()
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
         gazebo::common::PID pid;
-        pid.Init(600, 0, 3);
+        pid.Init(1000, 0, 1);
         
         _model->GetJointController()->SetPositionPID(_jointMap.at(gazebo_joint_name)->GetScopedName(), pid);
         
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
         
     }
+    
+    _first_loop = true;
+    _time.resize(_rtplugin_vector.size());
+    _last_time.resize(_rtplugin_vector.size());
+    _period.resize(_rtplugin_vector.size());
+    
 
 }
 
@@ -207,9 +213,27 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
 
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
-    for( const auto& plugin : _rtplugin_vector ){
-        (*plugin)->run(_world->GetSimTime().Double(), -1); // TBD actual time
+    
+    
+    for( int i = 0; i < _rtplugin_vector.size(); i++){
+        
+        const auto& plugin = _rtplugin_vector[i];
+        
+        _time[i] = _world->GetSimTime().Double();
+        
+        if(_first_loop){
+            _period[i] = 0;
+        }
+        else{
+            _period[i] = _time[i] - _last_time[i];
+        }
+        
+        (*plugin)->run(_time[i], _period[i]);
+        
     }
+    
+    _last_time = _time;
+    _first_loop = false;
 }
 
 void gazebo::GazeboXBotPlugin::Reset()
