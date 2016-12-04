@@ -194,10 +194,13 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
     std::shared_ptr<XBot::IXBotRobot> actual_robot(this, [](XBot::IXBotRobot* ptr){return;});
     std::shared_ptr<XBot::IXBotFT> actual_ft;
     
+    XBot::SharedMemory::Ptr shared_memory = std::make_shared<XBot::SharedMemory>();
+    
     bool ret = true;
     for(int i = 0; i < _rtplugin_vector.size(); i++) {
         if(!(*_rtplugin_vector[i])->init( _path_to_config,
                                 _rtplugin_names[i],
+                                shared_memory,
                                 actual_joint,
                                 actual_model, 
                                 actual_chain,
