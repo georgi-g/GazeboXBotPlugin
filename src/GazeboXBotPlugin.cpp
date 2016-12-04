@@ -269,7 +269,7 @@ bool gazebo::GazeboXBotPlugin::get_fault ( int joint_id, uint16_t& fault )
     return false;
 }
 
-bool gazebo::GazeboXBotPlugin::get_link_vel ( int joint_id, float& link_vel )
+bool gazebo::GazeboXBotPlugin::get_link_vel ( int joint_id, int16_t& link_vel )
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     if(current_joint_name != "") {
@@ -282,9 +282,9 @@ bool gazebo::GazeboXBotPlugin::get_link_vel ( int joint_id, float& link_vel )
     }
 }
 
-bool gazebo::GazeboXBotPlugin::get_max_temperature ( int joint_id, uint16_t& max_temperature )
+bool gazebo::GazeboXBotPlugin::get_temperature ( int joint_id, uint16_t& temperature )
 {
-    max_temperature = 0;
+    temperature = 0;
     return false;
 }
 
@@ -329,7 +329,7 @@ bool gazebo::GazeboXBotPlugin::get_rtt ( int joint_id, uint16_t& rtt )
     return false;
 }
 
-bool gazebo::GazeboXBotPlugin::get_torque ( int joint_id, int16_t& torque )
+bool gazebo::GazeboXBotPlugin::get_torque ( int joint_id, float& torque )
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     if(current_joint_name != "") {
@@ -525,7 +525,7 @@ bool gazebo::GazeboXBotPlugin::get_robot_motor_pos(std::map< int, float >& motor
 }
 
 
-bool gazebo::GazeboXBotPlugin::get_robot_link_vel(std::map< std::string, float >& link_vel)
+bool gazebo::GazeboXBotPlugin::get_robot_link_vel(std::map< std::string, int16_t >& link_vel)
 {
     bool ret = true;
     for(auto& c : _XBotRobot) {
@@ -534,7 +534,7 @@ bool gazebo::GazeboXBotPlugin::get_robot_link_vel(std::map< std::string, float >
     return ret;
 }
 
-bool gazebo::GazeboXBotPlugin::get_robot_link_vel(std::map< int, float >& link_vel)
+bool gazebo::GazeboXBotPlugin::get_robot_link_vel(std::map< int, int16_t >& link_vel)
 {
     bool ret = true;
     for(auto& c : _XBotRobot) {
@@ -561,7 +561,7 @@ bool gazebo::GazeboXBotPlugin::get_robot_motor_vel(std::map< int, int16_t >& mot
     return ret;
 }
 
-bool gazebo::GazeboXBotPlugin::get_robot_torque(std::map< std::string, int16_t >& torque)
+bool gazebo::GazeboXBotPlugin::get_robot_torque(std::map< std::string, float >& torque)
 {
     bool ret = true;
     for(auto& c : _XBotRobot) {
@@ -570,7 +570,7 @@ bool gazebo::GazeboXBotPlugin::get_robot_torque(std::map< std::string, int16_t >
     return ret;
 }
 
-bool gazebo::GazeboXBotPlugin::get_robot_torque(std::map< int, int16_t >& torque)
+bool gazebo::GazeboXBotPlugin::get_robot_torque(std::map< int, float >& torque)
 {
     bool ret = true;
     for(auto& c : _XBotRobot) {
@@ -579,20 +579,20 @@ bool gazebo::GazeboXBotPlugin::get_robot_torque(std::map< int, int16_t >& torque
     return ret;
 }
 
-bool gazebo::GazeboXBotPlugin::get_robot_max_temperature(std::map< std::string, uint16_t >& max_temperature)
+bool gazebo::GazeboXBotPlugin::get_robot_temperature(std::map< std::string, uint16_t >& temperature)
 {
     bool ret = true;
     for(auto& c : _XBotRobot) {
-        ret &= get_chain_max_temperature(c.first, max_temperature);
+        ret &= get_chain_temperature(c.first, temperature);
     }
     return ret;
 }
 
-bool gazebo::GazeboXBotPlugin::get_robot_max_temperature(std::map< int, uint16_t >& max_temperature)
+bool gazebo::GazeboXBotPlugin::get_robot_temperature(std::map< int, uint16_t >& temperature)
 {
     bool ret = true;
     for(auto& c : _XBotRobot) {
-        ret &= get_chain_max_temperature(c.first, max_temperature);
+        ret &= get_chain_temperature(c.first, temperature);
     }
     return ret;
 }
@@ -920,7 +920,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_motor_pos(std::string chain_name, std::
     return false;
 }
 
-bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::map< std::string, float >& link_vel)
+bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::map< std::string, int16_t >& link_vel)
 {
     if( _XBotRobot.count(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
@@ -941,7 +941,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::m
     return false;
 }
 
-bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::map< int, float >& link_vel)
+bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::map< int, int16_t >& link_vel)
 {
     if( _XBotRobot.count(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
@@ -1000,7 +1000,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_motor_vel(std::string chain_name, std::
     return false;
 }
 
-bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map< std::string, int16_t >& torque)
+bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map< std::string, float >& torque)
 {
     if( _XBotRobot.count(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
@@ -1021,7 +1021,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map
     return false;
 }
 
-bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map< int, int16_t >& torque)
+bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map< int, float >& torque)
 {
     if( _XBotRobot.count(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
@@ -1040,7 +1040,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map
     return false;
 }
 
-bool gazebo::GazeboXBotPlugin::get_chain_max_temperature(std::string chain_name, std::map< std::string, uint16_t >& max_temperature)
+bool gazebo::GazeboXBotPlugin::get_chain_temperature(std::string chain_name, std::map< std::string, uint16_t >& temperature)
 {
     if( _XBotRobot.count(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
@@ -1048,35 +1048,35 @@ bool gazebo::GazeboXBotPlugin::get_chain_max_temperature(std::string chain_name,
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
             actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
-            max_temperature[actual_joint_name] = 0;
-            if( !get_max_temperature(actual_chain_enabled_joints[i], max_temperature.at(actual_joint_name)))  {
-                printf("ERROR: get_chain_max_temperature() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
+            temperature[actual_joint_name] = 0;
+            if( !get_temperature(actual_chain_enabled_joints[i], temperature.at(actual_joint_name)))  {
+                printf("ERROR: get_chain_temperature() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
                 return false;
             }
         }
         return true;
     }
     
-    printf("ERROR: get_chain_max_temperature() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
+    printf("ERROR: get_chain_temperature() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
 
-bool gazebo::GazeboXBotPlugin::get_chain_max_temperature(std::string chain_name, std::map< int, uint16_t >& max_temperature)
+bool gazebo::GazeboXBotPlugin::get_chain_temperature(std::string chain_name, std::map< int, uint16_t >& temperature)
 {
     if( _XBotRobot.count(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
-            max_temperature[actual_chain_enabled_joints[i]] = 0;
-            if( !get_max_temperature(actual_chain_enabled_joints[i], max_temperature.at(actual_chain_enabled_joints[i])))  {
-                printf("ERROR: get_chain_max_temperature() on joint %d, that does not exits in the chain %s\n", actual_chain_enabled_joints[i], chain_name.c_str());
+            temperature[actual_chain_enabled_joints[i]] = 0;
+            if( !get_temperature(actual_chain_enabled_joints[i], temperature.at(actual_chain_enabled_joints[i])))  {
+                printf("ERROR: get_chain_temperature() on joint %d, that does not exits in the chain %s\n", actual_chain_enabled_joints[i], chain_name.c_str());
                 return false;
             }
         }
         return true;
     }
     
-    printf("ERROR: get_chain_max_temperature() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
+    printf("ERROR: get_chain_temperature() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
 
