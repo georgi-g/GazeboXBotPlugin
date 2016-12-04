@@ -26,10 +26,7 @@
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
 
-#include <XBotCore/XBotPlugin.h>
-#include <XBotCore/IXBotJoint.h>
-#include <XBotCore/IXBotChain.h>
-#include <XBotCore/IXBotRobot.h>
+#include <XBotCore-interfaces/All.h>
 
 #include <XBotCoreModel.h>
 

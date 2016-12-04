@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 find_package(gazebo REQUIRED)
 find_package(XBotCoreModel REQUIRED)
-find_package(XBotCore REQUIRED)
+find_package(XBotCore-interfaces REQUIRED)
 find_package(boost QUIET)
 find_package(XBotInterface REQUIRED)
 find_package(sharedlibpp REQUIRED)
@@ -12,7 +12,7 @@ find_package(sharedlibpp REQUIRED)
 include_directories(include
                     ${GAZEBO_INCLUDE_DIRS} 
                     ${XBotInterface_INCLUDE_DIRS}
-                    ${XBotCore_INCLUDE_DIRS}
+                    ${XBotCore-interfaces_INCLUDE_DIRS}
                     ${sharedlibpp_INCLUDE_DIRS}
                     )
 link_directories(${GAZEBO_LIBRARY_DIRS} ) 
@@ -27,6 +27,7 @@ target_link_libraries(GazeboXBotPlugin ${GAZEBO_LIBRARIES}
                                        ${XBotCoreModel_LIBRARIES}
                                        ${XBotInterface_LIBRARIES}
                                        ${sharedlibpp_LIBRARIES}
+                                       ${XBotCore-interfaces_LIBRARIES}
                                        yaml-cpp 
                                        )
 
