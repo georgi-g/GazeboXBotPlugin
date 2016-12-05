@@ -272,13 +272,12 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
         else{
             _period[i] = _time[i] - _last_time[i];
         }
+
+        (*plugin)->run(_time[i], _period[i]);
         
         _end_time[i] = _world->GetSimTime().Double();
         
-        _execution_time_buffer[i].push_back( static_cast<uint16_t>((_end_time[i]-_time[i])*1000) );
-        
-        (*plugin)->run(_time[i], _period[i]);
-        
+        _execution_time_buffer[i].push_back( static_cast<uint16_t>((_end_time[i]-_time[i])*1000000) );
     }
     
     _last_time = _time;
