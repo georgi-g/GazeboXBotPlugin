@@ -18,9 +18,9 @@
 */
 
 
-#include<GazeboXBotPlugin/GazeboXBotPlugin.h>
-
-#include<iostream>
+#include <GazeboXBotPlugin/GazeboXBotPlugin.h>
+#include <iostream>
+#include <fstream>
 
 gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 {
@@ -36,8 +36,35 @@ gazebo::GazeboXBotPlugin::~GazeboXBotPlugin()
         (*plugin)->close();
     }
     
+    if( _path_to_log_dir != "" ){
+        
+        std::fstream fs;
+        fs.open (_path_to_log_dir+std::string("execution_time.txt"), 
+                 std::fstream::in | std::fstream::out | std::fstream::app);
+
+        for( int i = 0; i < _rtplugin_vector.size(); i++ ){
+            
+            fs << "PLUGIN NAME: " << _rtplugin_names[i] << std::endl;
+            
+            for( int j = 0; j < _execution_time_buffer[i].size(); j++ ){
+                fs << _execution_time_buffer[i][j] << std::endl;
+            }
+            
+            fs << "\n\n\n\n" << std::endl;
+
+        }
+        
+        
+        fs.close();
+
+        
+        
+    }
     
+
 }
+
+
 
 void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 {
@@ -63,7 +90,15 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     
     _path_to_config = _sdf->GetElement("path_to_config_file")->Get<std::string>();
     
+    // Get the path to logging directory
+    if( !_sdf->HasElement("path_to_log_directory") ){
+        _path_to_log_dir = _sdf->GetElement("path_to_log_directory")->Get<std::string>();
+        computeAbsolutePath(_path_to_log_dir, "/", _path_to_log_dir);
+    }
+    
+    
     computeAbsolutePath(_path_to_config, "/", _path_to_config);
+    
 
 }
     
@@ -118,6 +153,14 @@ void gazebo::GazeboXBotPlugin::Init()
     _time.resize(_rtplugin_vector.size());
     _last_time.resize(_rtplugin_vector.size());
     _period.resize(_rtplugin_vector.size());
+    _end_time.resize(_rtplugin_vector.size());
+    _execution_time_buffer.resize(_rtplugin_vector.size());
+    
+    for(int i = 0; i < _rtplugin_vector.size(); i++){
+        
+        _execution_time_buffer[i] = boost::circular_buffer_space_optimized<uint16_t>(100000);
+        
+    }
     
 
 }
@@ -216,8 +259,7 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
 
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
-    
-    
+
     for( int i = 0; i < _rtplugin_vector.size(); i++){
         
         const auto& plugin = _rtplugin_vector[i];
@@ -230,6 +272,10 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
         else{
             _period[i] = _time[i] - _last_time[i];
         }
+        
+        _end_time[i] = _world->GetSimTime().Double();
+        
+        _execution_time_buffer[i].push_back( static_cast<uint16_t>((_end_time[i]-_time[i])*1000) );
         
         (*plugin)->run(_time[i], _period[i]);
         

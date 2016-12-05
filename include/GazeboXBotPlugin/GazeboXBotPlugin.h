@@ -25,6 +25,7 @@
 #include <boost/bind.hpp>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
+#include <boost/circular_buffer.hpp>
 
 #include <XBotCore-interfaces/All.h>
 
@@ -79,6 +80,7 @@ public :
      * @return void
      */
     virtual void Reset();
+    
 
 protected:
     
@@ -226,7 +228,7 @@ private:
      std::vector<std::string> _rtplugin_names;
      std::vector<std::shared_ptr<shlibpp::SharedLibraryClass<XBot::XBotPlugin>>> _rtplugin_vector;
      
-     std::vector<double> _last_time, _time, _period, _elapsed_time;
+     std::vector<double> _last_time, _time, _period, _end_time;
      bool _first_loop;
     
      
@@ -250,6 +252,10 @@ private:
      
      // pointer to sdf 
      sdf::ElementPtr _sdf;
+     
+     // Circular buffer for logging execution time 
+     std::string _path_to_log_dir;
+     std::vector<boost::circular_buffer_space_optimized<uint16_t>> _execution_time_buffer;
      
      // NOTE IXBotJoint getters
     virtual bool get_link_pos(int joint_id, float& link_pos) final;
