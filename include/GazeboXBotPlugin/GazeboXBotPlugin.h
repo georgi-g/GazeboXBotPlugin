@@ -30,8 +30,8 @@
 
 #include <XBotCoreModel.h>
 
-#include <XBotInterface/RobotInterface.h>
 #include <SharedLibraryClassFactory.h>
+#include <SharedLibraryClass.h>
 
 
 
@@ -228,10 +228,6 @@ private:
      
      std::vector<double> _last_time, _time, _period, _elapsed_time;
      bool _first_loop;
-    
-     
-     // RobotInterface instance
-     XBot::RobotInterface::Ptr _robot;
      
      // Gazebo joint names vector
      std::vector<std::string> _jointNames;
