@@ -75,7 +75,7 @@ void gazebo::GazeboXBotPlugin::Init()
     gazebo::ModelPlugin::Init();
     std::cout << "GazeboXBotPlugin Init()" << std::endl;     
         
-    std::string path_to_cfg("/home/alaurenzi/Code/robotology-superbuild/configs/ADVR_shared/centauro/configs/config_centauro-rt_upperbody.yaml");
+    std::string path_to_cfg("/home/lucamuratore/robotology-superbuild/configs/ADVR_shared/bigman/configs/config_walkman_barrow.yaml");
     
     path_to_cfg = _path_to_config;
     
