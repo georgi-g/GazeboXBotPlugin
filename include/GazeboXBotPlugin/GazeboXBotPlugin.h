@@ -27,7 +27,7 @@
 #include <gazebo/common/common.hh>
 
 #include <XBotCore-interfaces/All.h>
-
+#include <GazeboXBotPlugin/JointController.h>
 #include <XBotCoreModel.h>
 
 #include <SharedLibraryClassFactory.h>
@@ -234,6 +234,7 @@ private:
      
      // Gazebo joint map
      std::map<std::string, gazebo::physics::JointPtr> _jointMap;
+     std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;
 
      // model
      physics::ModelPtr _model;

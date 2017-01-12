@@ -21,6 +21,7 @@
 #include<GazeboXBotPlugin/GazeboXBotPlugin.h>
 
 #include<iostream>
+#include <GazeboXBotPlugin/DefaultGazeboPID.h>
 
 gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 {
@@ -101,11 +102,10 @@ void gazebo::GazeboXBotPlugin::Init()
         std::string gazebo_joint_name = gazebo_models_joints[gazebo_joint]->GetName();
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
-        gazebo::common::PID pid;
-        pid.Init(1000, 0, 1);
         
-        
-        _model->GetJointController()->SetPositionPID(_jointMap.at(gazebo_joint_name)->GetScopedName(), pid);
+        _joint_controller_map[gazebo_joint_name] = 
+            std::make_shared<XBot::DefaultGazeboPID>( _model->GetJoint(gazebo_joint_name),
+                                                      _model->GetJointController() );
         
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
         
@@ -375,13 +375,10 @@ bool gazebo::GazeboXBotPlugin::set_op_idx_aux ( int joint_id, const uint16_t& op
 bool gazebo::GazeboXBotPlugin::set_pos_ref ( int joint_id, const float& pos_ref )
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
-    auto it = _jointMap.find(current_joint_name);
+    auto it = _joint_controller_map.find(current_joint_name);
     
-    if(current_joint_name != "" && it != _jointMap.end()) {
-        _model->GetJointController()->SetPositionTarget((it->second)->GetScopedName(), pos_ref);
-        _model->GetJointController()->Update();
-
-        
+    if(current_joint_name != "" && it != _joint_controller_map.end()) {
+        it->second->sendControlInput(pos_ref, 0, 0);
     }
 
     return true;
@@ -407,14 +404,16 @@ bool gazebo::GazeboXBotPlugin::set_ts ( int joint_id, const uint16_t& ts )
 
 bool gazebo::GazeboXBotPlugin::set_vel_ref ( int joint_id, const int16_t& vel_ref )
 {
-    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
-    auto it = _jointMap.find(current_joint_name);
+    // TBD support velocity reference
     
-    if(current_joint_name != "" && it != _jointMap.end()) {
-        _model->GetJointController()->SetVelocityTarget((it->second)->GetScopedName(), vel_ref);
-        _model->GetJointController()->Update();
-        return true;
-    }
+//     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+//     auto it = _jointMap.find(current_joint_name);
+//     
+//     if(current_joint_name != "" && it != _jointMap.end()) {
+//         _model->GetJointController()->SetVelocityTarget((it->second)->GetScopedName(), vel_ref);
+//         _model->GetJointController()->Update();
+//         return true;
+//     }
     
     return false;
     
