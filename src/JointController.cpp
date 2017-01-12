@@ -37,7 +37,7 @@ bool JointController::setGains(double p, double i, double d)
     _i = i;
     _d = d;
     
-    return set_gains_internal();
+    return set_gains_internal(p, i, d);
 }
 
 bool JointController::enableFeedforward()
