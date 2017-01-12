@@ -17,18 +17,18 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef __GAZEBO_XBOT_PLUGIN_JOINT_IMPEDANCE_CONTROLLER_H__
-#define __GAZEBO_XBOT_PLUGIN_JOINT_IMPEDANCE_CONTROLLER_H__
+#ifndef __GAZEBO_XBOT_PLUGIN_DEFAULT_GAZEBO_PID_H__
+#define __GAZEBO_XBOT_PLUGIN_DEFAULT_GAZEBO_PID_H__
 
 #include <GazeboXBotPlugin/JointController.h>
 
 namespace XBot {
  
-    class JointImpedanceController : public JointController {
+    class DefaultGazeboPID : public JointController {
         
     public:
         
-        JointImpedanceController(gazebo::physics::JointPtr joint,
+        DefaultGazeboPID(gazebo::physics::JointPtr joint,
                                  gazebo::physics::JointControllerPtr joint_ctrl);
 
         

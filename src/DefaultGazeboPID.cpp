@@ -21,25 +21,25 @@
 
 namespace XBot {
     
-bool JointImpedanceController::disableFeedforward()
+bool DefaultGazeboPID::disableFeedforward()
 {
     return XBot::JointController::disableFeedforward();
 }
 
-bool JointImpedanceController::enableFeedforward()
+bool DefaultGazeboPID::enableFeedforward()
 {
     return false;
 }
 
-JointImpedanceController::JointImpedanceController(gazebo::physics::JointPtr joint, 
-                                                   gazebo::physics::JointControllerPtr joint_ctrl): 
+DefaultGazeboPID::DefaultGazeboPID(gazebo::physics::JointPtr joint, 
+                                           gazebo::physics::JointControllerPtr joint_ctrl): 
     JointController(joint),
     _joint_ctrl(joint_ctrl)
 {
 
 }
 
-double JointImpedanceController::sendControlInput(double pos_ref, 
+double DefaultGazeboPID::sendControlInput(double pos_ref, 
                                                   double vel_ref, 
                                                   double tau_ref)
 {
@@ -47,7 +47,7 @@ double JointImpedanceController::sendControlInput(double pos_ref,
     return _joint_ctrl->GetForces().at(_joint->GetScopedName());
 }
  
-bool JointImpedanceController::set_gains_internal(double p, double i, double d)
+bool DefaultGazeboPID::set_gains_internal(double p, double i, double d)
 {
     gazebo::common::PID pid;
     pid.Init(p, i, d);
