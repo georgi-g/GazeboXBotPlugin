@@ -118,6 +118,21 @@ double JointController::getVelocityReference() const
     return _vel_ref;
 }
 
+void JointController::setPositionReference(double pos_ref)
+{
+    _pos_ref = pos_ref;
+}
+
+void JointController::setTorqueReference(double tau_ref)
+{
+    _tau_ref = tau_ref;
+}
+
+void JointController::setVelocityReference(double vel_ref)
+{
+    _vel_ref = vel_ref;
+}
+
 
 
 

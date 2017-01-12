@@ -36,6 +36,9 @@ namespace XBot {
         bool setGains(double p, double i, double d);
         
         void setReference(double pos_ref, double vel_ref, double tau_ref);
+        void setPositionReference(double pos_ref);
+        void setVelocityReference(double vel_ref);
+        void setTorqueReference(double tau_ref);
         
         virtual void sendControlInput();
         

@@ -302,6 +302,29 @@ bool gazebo::GazeboXBotPlugin::get_temperature ( int joint_id, uint16_t& tempera
     return false;
 }
 
+bool gazebo::GazeboXBotPlugin::get_gains(int joint_id, std::vector< uint16_t >& gain_vector)
+{
+    
+    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    auto it = _joint_controller_map.find(current_joint_name);
+    
+    std::cout << "get gains called " << joint_id << " " << current_joint_name << std::endl;
+    
+    if(current_joint_name != "" && it != _joint_controller_map.end()){
+        if(gain_vector.size() < 2){
+            gain_vector.assign(2, 0);
+        }
+        gain_vector[0] = it->second->getP();
+        gain_vector[1] = it->second->getD();
+
+        
+        return true;
+    }
+    
+    return false;
+}
+
+
 bool gazebo::GazeboXBotPlugin::get_motor_pos ( int joint_id, float& motor_pos )
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
@@ -374,6 +397,19 @@ bool gazebo::GazeboXBotPlugin::set_fault_ack ( int joint_id, const int16_t& faul
 
 bool gazebo::GazeboXBotPlugin::set_gains ( int joint_id, const std::vector< uint16_t >& gains )
 {
+    if(gains.size() < 2){
+        std::cerr << "ERROR in " << __func__ << "! Provided gains vector size is " << gains.size() << " less than 2!" << std::endl;
+        return false;
+    }
+    
+    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    auto it = _joint_controller_map.find(current_joint_name);
+    
+    if(current_joint_name != "" && it != _joint_controller_map.end()) {
+        it->second->setGains(gains[0], 0, gains[1]);
+        return true;
+    }
+
     return false;
 }
 
@@ -388,22 +424,23 @@ bool gazebo::GazeboXBotPlugin::set_pos_ref ( int joint_id, const float& pos_ref 
     auto it = _joint_controller_map.find(current_joint_name);
     
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
-        it->second->setReference(pos_ref, 0, 0);
+        it->second->setPositionReference(pos_ref);
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 bool gazebo::GazeboXBotPlugin::set_tor_ref ( int joint_id, const int16_t& tor_ref )
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
-    auto it = _jointMap.find(current_joint_name);
+    auto it = _joint_controller_map.find(current_joint_name);
     
-    if(current_joint_name != "" && it != _jointMap.end()) {
-        (it->second)->SetForce(0, tor_ref);
+    if(current_joint_name != "" && it != _joint_controller_map.end()) {
+        it->second->setTorqueReference(double(tor_ref)/1000);
         return true;
     }
-    
+
     return false;
 }
 

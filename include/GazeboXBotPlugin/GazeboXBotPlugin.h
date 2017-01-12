@@ -261,6 +261,8 @@ private:
     
     virtual bool get_temperature(int joint_id, uint16_t& temperature) final;
     
+    virtual bool get_gains(int joint_id, std::vector<uint16_t>& gain_vector) final;
+    
     virtual bool get_fault(int joint_id, uint16_t& fault) final;
     
     virtual bool get_rtt(int joint_id, uint16_t& rtt) final;
