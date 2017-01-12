@@ -73,15 +73,11 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 void gazebo::GazeboXBotPlugin::Init()
 {
     gazebo::ModelPlugin::Init();
-    std::cout << "GazeboXBotPlugin Init()" << std::endl;     
-        
-    std::string path_to_cfg("/home/alaurenzi/Code/robotology-superbuild/configs/ADVR_shared/centauro/configs/config_centauro-rt_upperbody.yaml");
-    
-    path_to_cfg = _path_to_config;
-    
+    std::cout << "GazeboXBotPlugin Init()" << std::endl;
+
     // init XBotCoreModel
     // parse the YAML file to initialize internal variables
-    parseYAML(path_to_cfg); 
+    parseYAML(_path_to_config); 
     
     // Load plugins
     loadPlugins();
