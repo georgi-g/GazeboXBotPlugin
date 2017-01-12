@@ -108,6 +108,7 @@ void gazebo::GazeboXBotPlugin::Init()
         gazebo::common::PID pid;
         pid.Init(1000, 0, 1);
         
+        
         _model->GetJointController()->SetPositionPID(_jointMap.at(gazebo_joint_name)->GetScopedName(), pid);
         
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
@@ -383,6 +384,8 @@ bool gazebo::GazeboXBotPlugin::set_pos_ref ( int joint_id, const float& pos_ref 
     if(current_joint_name != "" && it != _jointMap.end()) {
         _model->GetJointController()->SetPositionTarget((it->second)->GetScopedName(), pos_ref);
         _model->GetJointController()->Update();
+
+        
     }
 
     return true;

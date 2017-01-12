@@ -28,6 +28,25 @@ target_link_libraries(GazeboXBotPlugin ${GAZEBO_LIBRARIES}
                                        yaml-cpp 
                                        )
 
+# JointController
+add_library(JointController SHARED src/JointController.cpp)
+target_link_libraries(JointController ${GAZEBO_LIBRARIES} )
+
+install(TARGETS GazeboXBotPlugin RUNTIME LIBRARY DESTINATION lib)
+install(DIRECTORY include/ 
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h*")
+        
+add_library(JointImpedanceController SHARED src/JointImpedanceController.cpp)
+target_link_libraries(JointImpedanceController JointController ${GAZEBO_LIBRARIES} )
+
+install(TARGETS GazeboXBotPlugin RUNTIME LIBRARY DESTINATION lib)
+install(DIRECTORY include/ 
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h*")
+        
+add_library(DefaultGazeboPID SHARED src/DefaultGazeboPID.cpp)
+target_link_libraries(DefaultGazeboPID JointController ${GAZEBO_LIBRARIES} )
 
 install(TARGETS GazeboXBotPlugin RUNTIME LIBRARY DESTINATION lib)
 install(DIRECTORY include/ 
