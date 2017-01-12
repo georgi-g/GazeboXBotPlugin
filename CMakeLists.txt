@@ -30,6 +30,21 @@ else()
 endif()
 
 
+
+
+# JointController
+add_library(JointController SHARED src/JointController.cpp)
+target_link_libraries(JointController ${GAZEBO_LIBRARIES} )
+
+
+        
+add_library(JointImpedanceController SHARED src/JointImpedanceController.cpp)
+target_link_libraries(JointImpedanceController JointController ${GAZEBO_LIBRARIES} )
+
+        
+add_library(DefaultGazeboPID SHARED src/DefaultGazeboPID.cpp)
+target_link_libraries(DefaultGazeboPID JointController ${GAZEBO_LIBRARIES} )
+
 # GazeboXBotPlugin
 add_library(GazeboXBotPlugin SHARED src/GazeboXBotPlugin.cpp)
 target_link_libraries(GazeboXBotPlugin ${GAZEBO_LIBRARIES} 
@@ -37,30 +52,30 @@ target_link_libraries(GazeboXBotPlugin ${GAZEBO_LIBRARIES}
                                        ${XBotCoreModel_LIBRARIES}
                                        ${sharedlibpp_LIBRARIES}
                                        ${XBotCore-interfaces_LIBRARIES}
-                                       yaml-cpp 
+                                       yaml-cpp
+                                       JointController
+                                       DefaultGazeboPID
+                                       JointImpedanceController
                                        )
-
-# JointController
-add_library(JointController SHARED src/JointController.cpp)
-target_link_libraries(JointController ${GAZEBO_LIBRARIES} )
-
+                                       
 install(TARGETS GazeboXBotPlugin RUNTIME LIBRARY DESTINATION lib)
 install(DIRECTORY include/ 
         DESTINATION include
         FILES_MATCHING PATTERN "*.h*")
         
-add_library(JointImpedanceController SHARED src/JointImpedanceController.cpp)
-target_link_libraries(JointImpedanceController JointController ${GAZEBO_LIBRARIES} )
-
-install(TARGETS GazeboXBotPlugin RUNTIME LIBRARY DESTINATION lib)
+install(TARGETS JointController RUNTIME LIBRARY DESTINATION lib)
 install(DIRECTORY include/ 
         DESTINATION include
         FILES_MATCHING PATTERN "*.h*")
         
-add_library(DefaultGazeboPID SHARED src/DefaultGazeboPID.cpp)
-target_link_libraries(DefaultGazeboPID JointController ${GAZEBO_LIBRARIES} )
-
-install(TARGETS GazeboXBotPlugin RUNTIME LIBRARY DESTINATION lib)
+install(TARGETS JointImpedanceController RUNTIME LIBRARY DESTINATION lib)
 install(DIRECTORY include/ 
         DESTINATION include
         FILES_MATCHING PATTERN "*.h*")
+        
+install(TARGETS DefaultGazeboPID RUNTIME LIBRARY DESTINATION lib)
+install(DIRECTORY include/ 
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h*")
+
+

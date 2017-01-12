@@ -26,21 +26,20 @@ JointImpedanceController::JointImpedanceController(gazebo::physics::JointPtr joi
 
 }
 
-
-double JointImpedanceController::sendControlInput(double pos_ref, double vel_ref, double tau_ref)
+double JointImpedanceController::compute_control_input()
 {
     double torque = 0;
     
-    torque = getP()*( pos_ref - getJointPosition() ) + getD()*( -getJointVelocity() );
+    torque = getP()*( getPositionReference() - getJointPosition() ) + getD()*( -getJointVelocity() );
     
     if( isFeedforwardEnabled() ){
-        torque += tau_ref;
+        torque += getTorqueReference();
     }
-    
-    _joint->SetForce(0, torque);
     
     return torque;
 }
+
+
 
     
     

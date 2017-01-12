@@ -29,10 +29,11 @@ namespace XBot {
     public:
         
         JointImpedanceController(gazebo::physics::JointPtr joint);
+
+    protected:
         
-        virtual double sendControlInput(double pos_ref, 
-                                        double vel_ref, 
-                                        double tau_ref);
+        virtual double compute_control_input();
+        
         
     private:
         

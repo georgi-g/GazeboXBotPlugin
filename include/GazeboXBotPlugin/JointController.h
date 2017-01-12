@@ -35,30 +35,37 @@ namespace XBot {
 
         bool setGains(double p, double i, double d);
         
-        virtual double sendControlInput(double pos_ref, double vel_ref, double tau_ref) = 0;
+        void setReference(double pos_ref, double vel_ref, double tau_ref);
+        
+        virtual void sendControlInput();
         
         double getP() const;
         double getI() const;
         double getD() const;
         
+        double getPositionReference() const;
+        double getVelocityReference() const;
+        double getTorqueReference() const;
+        
         virtual bool enableFeedforward();
         virtual bool disableFeedforward();
         bool isFeedforwardEnabled() const;
         
-        
-        
-        
+
     protected:
         
         double getJointPosition() const;
         double getJointVelocity() const;
+        
         virtual bool set_gains_internal(double p, double i, double d);
+        virtual double compute_control_input() = 0;
         
         gazebo::physics::JointPtr _joint;
         
     private:
         
         double _p, _i, _d;
+        double _pos_ref, _vel_ref, _tau_ref;
         bool _feedforward_enabled;
         
 

@@ -39,13 +39,13 @@ DefaultGazeboPID::DefaultGazeboPID(gazebo::physics::JointPtr joint,
 
 }
 
-double DefaultGazeboPID::sendControlInput(double pos_ref, 
-                                                  double vel_ref, 
-                                                  double tau_ref)
+double DefaultGazeboPID::compute_control_input()
 {
-    _joint_ctrl->SetPositionTarget(_joint->GetScopedName(), pos_ref);
-    return _joint_ctrl->GetForces().at(_joint->GetScopedName());
+    return 0;
 }
+
+
+
  
 bool DefaultGazeboPID::set_gains_internal(double p, double i, double d)
 {

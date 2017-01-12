@@ -22,6 +22,7 @@
 
 #include<iostream>
 #include <GazeboXBotPlugin/DefaultGazeboPID.h>
+#include <GazeboXBotPlugin/JointImpedanceController.h>
 
 gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 {
@@ -103,9 +104,14 @@ void gazebo::GazeboXBotPlugin::Init()
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
         
+//         _joint_controller_map[gazebo_joint_name] = 
+//             std::make_shared<XBot::DefaultGazeboPID>( _model->GetJoint(gazebo_joint_name),
+//                                                       _model->GetJointController() );
+            
         _joint_controller_map[gazebo_joint_name] = 
-            std::make_shared<XBot::DefaultGazeboPID>( _model->GetJoint(gazebo_joint_name),
-                                                      _model->GetJointController() );
+            std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
+            
+        _joint_controller_map.at(gazebo_joint_name)->setGains(1000, 0, 1);
         
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
         
@@ -234,6 +240,10 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
     
     _last_time = _time;
     _first_loop = false;
+    
+    for( auto& pair : _joint_controller_map ){
+        pair.second->sendControlInput();
+    }
 }
 
 void gazebo::GazeboXBotPlugin::Reset()
@@ -378,7 +388,7 @@ bool gazebo::GazeboXBotPlugin::set_pos_ref ( int joint_id, const float& pos_ref 
     auto it = _joint_controller_map.find(current_joint_name);
     
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
-        it->second->sendControlInput(pos_ref, 0, 0);
+        it->second->setReference(pos_ref, 0, 0);
     }
 
     return true;
