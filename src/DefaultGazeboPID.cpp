@@ -46,5 +46,16 @@ double JointImpedanceController::sendControlInput(double pos_ref,
     _joint_ctrl->SetPositionTarget(_joint->GetScopedName(), pos_ref);
     return _joint_ctrl->GetForces().at(_joint->GetScopedName());
 }
+ 
+bool JointImpedanceController::set_gains_internal(double p, double i, double d)
+{
+    gazebo::common::PID pid;
+    pid.Init(p, i, d);
+    _joint_ctrl->SetPositionPID(_joint->GetScopedName(), pid);
     
+    return true;
+}
+
+
+ 
 }

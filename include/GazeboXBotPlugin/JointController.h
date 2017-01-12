@@ -21,12 +21,15 @@
 #define __GAZEBO_XBOT_PLUGIN_JOINT_CONTROLLER_H__
 
 #include <gazebo/physics/physics.hh>
+#include <memory>
 
 namespace XBot {
     
     class JointController {
         
     public:
+        
+        typedef std::shared_ptr<JointController> Ptr;
         
         JointController(gazebo::physics::JointPtr joint);
 
@@ -49,6 +52,8 @@ namespace XBot {
         
         double getJointPosition() const;
         double getJointVelocity() const;
+        virtual bool set_gains_internal(double p, double i, double d);
+        
         gazebo::physics::JointPtr _joint;
         
     private:

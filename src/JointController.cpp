@@ -36,6 +36,8 @@ bool JointController::setGains(double p, double i, double d)
     _p = p;
     _i = i;
     _d = d;
+    
+    return set_gains_internal();
 }
 
 bool JointController::enableFeedforward()
@@ -80,6 +82,10 @@ double JointController::getJointVelocity() const
     return _joint->GetVelocity(0);
 }
 
+bool JointController::set_gains_internal(double p, double i, double d)
+{
+    return true;
+}
 
 
 
