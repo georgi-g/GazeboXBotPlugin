@@ -112,6 +112,7 @@ void gazebo::GazeboXBotPlugin::Init()
             std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
             
         _joint_controller_map.at(gazebo_joint_name)->setGains(1000, 0, 1);
+        _joint_controller_map.at(gazebo_joint_name)->enableFeedforward();
         
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
         
@@ -304,11 +305,10 @@ bool gazebo::GazeboXBotPlugin::get_temperature ( int joint_id, uint16_t& tempera
 
 bool gazebo::GazeboXBotPlugin::get_gains(int joint_id, std::vector< uint16_t >& gain_vector)
 {
-    
+ 
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     auto it = _joint_controller_map.find(current_joint_name);
-    
-    std::cout << "get gains called " << joint_id << " " << current_joint_name << std::endl;
+
     
     if(current_joint_name != "" && it != _joint_controller_map.end()){
         if(gain_vector.size() < 2){
@@ -316,11 +316,10 @@ bool gazebo::GazeboXBotPlugin::get_gains(int joint_id, std::vector< uint16_t >& 
         }
         gain_vector[0] = it->second->getP();
         gain_vector[1] = it->second->getD();
-
         
         return true;
     }
-    
+
     return false;
 }
 
@@ -437,7 +436,7 @@ bool gazebo::GazeboXBotPlugin::set_tor_ref ( int joint_id, const int16_t& tor_re
     auto it = _joint_controller_map.find(current_joint_name);
     
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
-        it->second->setTorqueReference(double(tor_ref)/1000);
+        it->second->setTorqueReference(double(tor_ref) / 50); // NOTE torque scaling random but suitable to avoid the int16t overflow
         return true;
     }
 
