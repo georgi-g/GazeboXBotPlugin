@@ -26,6 +26,9 @@ JointController::JointController(gazebo::physics::JointPtr joint):
     _p(0),
     _i(0),
     _d(0),
+    _pos_ref(0),
+    _vel_ref(0),
+    _tau_ref(0),
     _feedforward_enabled(false)
 {
 
@@ -86,6 +89,52 @@ bool JointController::set_gains_internal(double p, double i, double d)
 {
     return true;
 }
+
+void JointController::sendControlInput()
+{
+    _joint->SetForce(0, compute_control_input());
+}
+
+void JointController::setReference(double pos_ref, double vel_ref, double tau_ref)
+{
+    _pos_ref = pos_ref;
+    _vel_ref = vel_ref;
+    _tau_ref = tau_ref;
+}
+
+double JointController::getPositionReference() const
+{
+    return _pos_ref;
+}
+
+
+double JointController::getTorqueReference() const
+{
+    return _tau_ref;
+}
+
+double JointController::getVelocityReference() const
+{
+    return _vel_ref;
+}
+
+void JointController::setPositionReference(double pos_ref)
+{
+    _pos_ref = pos_ref;
+}
+
+void JointController::setTorqueReference(double tau_ref)
+{
+    _tau_ref = tau_ref;
+}
+
+void JointController::setVelocityReference(double vel_ref)
+{
+    _vel_ref = vel_ref;
+}
+
+
+
 
 
 

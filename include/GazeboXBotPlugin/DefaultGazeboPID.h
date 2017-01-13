@@ -31,11 +31,6 @@ namespace XBot {
         DefaultGazeboPID(gazebo::physics::JointPtr joint,
                                  gazebo::physics::JointControllerPtr joint_ctrl);
 
-        
-        
-        virtual double sendControlInput(double pos_ref, 
-                                        double vel_ref, 
-                                        double tau_ref);
                 
         virtual bool disableFeedforward();
 
@@ -44,6 +39,8 @@ namespace XBot {
     protected:
         
         virtual bool set_gains_internal(double p, double i, double d);
+        virtual double compute_control_input();
+       
         
     private:
         

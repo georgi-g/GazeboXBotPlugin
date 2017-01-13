@@ -27,7 +27,7 @@
 #include <gazebo/common/common.hh>
 
 #include <XBotCore-interfaces/All.h>
-
+#include <GazeboXBotPlugin/JointController.h>
 #include <XBotCoreModel.h>
 
 #include <SharedLibraryClassFactory.h>
@@ -234,6 +234,7 @@ private:
      
      // Gazebo joint map
      std::map<std::string, gazebo::physics::JointPtr> _jointMap;
+     std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;
 
      // model
      physics::ModelPtr _model;
@@ -259,6 +260,8 @@ private:
     virtual bool get_torque(int joint_id, float& torque) final;
     
     virtual bool get_temperature(int joint_id, uint16_t& temperature) final;
+    
+    virtual bool get_gains(int joint_id, std::vector<uint16_t>& gain_vector) final;
     
     virtual bool get_fault(int joint_id, uint16_t& fault) final;
     
