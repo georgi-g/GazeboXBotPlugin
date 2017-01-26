@@ -288,7 +288,7 @@ bool gazebo::GazeboXBotPlugin::get_link_vel ( int joint_id, int16_t& link_vel )
     auto it = _jointMap.find(current_joint_name);
     
     if(current_joint_name != "" && it != _jointMap.end()) {
-        link_vel = (it->second)->GetVelocity(0);
+        link_vel = (it->second)->GetVelocity(0)*1000.;
         return true;
     }
     else {
@@ -346,7 +346,7 @@ bool gazebo::GazeboXBotPlugin::get_motor_vel ( int joint_id, int16_t& motor_vel 
     auto it = _jointMap.find(current_joint_name);
     
     if(current_joint_name != "" && it != _jointMap.end()) {
-        motor_vel = (it->second)->GetVelocity(0);
+        motor_vel = (it->second)->GetVelocity(0)*1000.;
         // NOTE we return false because we are reading the link position form gazebo TBD a plugin should simulate this
         return false;
     }
