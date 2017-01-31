@@ -24,24 +24,18 @@
 #include <GazeboXBotPlugin/DefaultGazeboPID.h>
 #include <GazeboXBotPlugin/JointImpedanceController.h>
 #include <csignal>
-#include <boost/function.hpp>
-#include <boost/bind.hpp>
 
-// boost::function<void(void)> g_sigint_callback;
-//
-// void sigint_handler(int s){
-//     std::cout << "void sigint_handler(int s)" << std::endl;
-//     g_sigint_callback();
-// }
+sig_atomic_t g_loop_ok = 1;
+
+void sigint_handler(int s){
+    g_loop_ok = 0;
+}
 
 
 gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 {
     std::cout << "GazeboXBotPlugin()" << std::endl;
-
-//     g_sigint_callback = boost::bind(&gazebo::GazeboXBotPlugin::close_all, this);
-//     signal(SIGINT, sigint_handler);
-
+    signal(SIGINT, sigint_handler);
 
 }
 
@@ -244,7 +238,11 @@ void gazebo::GazeboXBotPlugin::close_all()
 
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
-
+    if( g_loop_ok == 0 ){
+        std::cout << "CTRL+C detected..." << std::endl;
+        close_all();
+        exit(1);
+    }
 
     for( int i = 0; i < _rtplugin_vector.size(); i++){
 
