@@ -27,20 +27,20 @@
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
 
-boost::function<void(void)> g_sigint_callback;
-
-void sigint_handler(int s){
-    std::cout << "void sigint_handler(int s)" << std::endl;
-    g_sigint_callback();
-}
+// boost::function<void(void)> g_sigint_callback;
+//
+// void sigint_handler(int s){
+//     std::cout << "void sigint_handler(int s)" << std::endl;
+//     g_sigint_callback();
+// }
 
 
 gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 {
     std::cout << "GazeboXBotPlugin()" << std::endl;
 
-    g_sigint_callback = boost::bind(&gazebo::GazeboXBotPlugin::close_all, this);
-    signal(SIGINT, sigint_handler);
+//     g_sigint_callback = boost::bind(&gazebo::GazeboXBotPlugin::close_all, this);
+//     signal(SIGINT, sigint_handler);
 
 
 }
@@ -49,6 +49,7 @@ gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 gazebo::GazeboXBotPlugin::~GazeboXBotPlugin()
 {
     std::cout << "~GazeboXBotPlugin()" << std::endl;
+    close_all();
 
 }
 
