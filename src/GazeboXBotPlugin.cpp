@@ -23,22 +23,33 @@
 #include<iostream>
 #include <GazeboXBotPlugin/DefaultGazeboPID.h>
 #include <GazeboXBotPlugin/JointImpedanceController.h>
+#include <csignal>
+#include <boost/function.hpp>
+#include <boost/bind.hpp>
+
+boost::function<void(void)> g_sigint_callback;
+
+void sigint_handler(int s){
+    std::cout << "void sigint_handler(int s)" << std::endl;
+    g_sigint_callback();
+}
+
 
 gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 {
     std::cout << "GazeboXBotPlugin()" << std::endl;
+
+    g_sigint_callback = boost::bind(&gazebo::GazeboXBotPlugin::close_all, this);
+    signal(SIGINT, sigint_handler);
+
+
 }
 
 
 gazebo::GazeboXBotPlugin::~GazeboXBotPlugin()
 {
     std::cout << "~GazeboXBotPlugin()" << std::endl;
-    
-    for( const auto& plugin : _rtplugin_vector ){
-        (*plugin)->close();
-    }
-    
-    
+
 }
 
 void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
@@ -47,28 +58,28 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 
     // Store the pointer to the model
     _model = _parent;
-    
+
     // Get a handle to the world
     _world = _model->GetWorld();
-      
+
     // Listen to the update event. This event is broadcast every simulation iteration
     _updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&GazeboXBotPlugin::XBotUpdate, this, _1));
-    
+
     // Save the SDF handle
     this->_sdf = _sdf;
-    
+
     // Get the path to config file from SDF
     if( !_sdf->HasElement("path_to_config_file") ){
         std::cerr << "ERROR in " << __func__ << "! Missing element path_to_config_file!" << std::endl;
         return;
     }
-    
+
     _path_to_config = _sdf->GetElement("path_to_config_file")->Get<std::string>();
-    
+
     computeAbsolutePath(_path_to_config, "/", _path_to_config);
 
 }
-    
+
 
 
 
@@ -79,89 +90,91 @@ void gazebo::GazeboXBotPlugin::Init()
 
     // init XBotCoreModel
     // parse the YAML file to initialize internal variables
-    parseYAML(_path_to_config); 
-    
+    parseYAML(_path_to_config);
+
     // Load plugins
     loadPlugins();
-    
+
     // Init plugins
     initPlugins();
-    
+
     // initialize the model
     if (!_XBotModel.init(_urdf_path, _srdf_path, _joint_map_config)) {
-        printf("ERROR: model initialization failed, please check the urdf_path and srdf_path in your YAML config file.\n"); 
+        printf("ERROR: model initialization failed, please check the urdf_path and srdf_path in your YAML config file.\n");
         return;
     }
     // generate the robot
     _XBotModel.generate_robot();
     // get the map of joint
     _XBotRobot = _XBotModel.get_robot();
-    
+
     // iterate over Gazebo model Joint vector and store Joint pointers in a map
     const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
     for (unsigned int gazebo_joint = 0; gazebo_joint < gazebo_models_joints.size(); gazebo_joint++) {
         std::string gazebo_joint_name = gazebo_models_joints[gazebo_joint]->GetName();
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
-        
-//         _joint_controller_map[gazebo_joint_name] = 
+
+//         _joint_controller_map[gazebo_joint_name] =
 //             std::make_shared<XBot::DefaultGazeboPID>( _model->GetJoint(gazebo_joint_name),
 //                                                       _model->GetJointController() );
-            
-        _joint_controller_map[gazebo_joint_name] = 
+
+        _joint_controller_map[gazebo_joint_name] =
             std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
-            
+
         _joint_controller_map.at(gazebo_joint_name)->setGains(1000, 0, 1);
         _joint_controller_map.at(gazebo_joint_name)->enableFeedforward();
-        
+
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
-        
+
     }
-    
+
     _first_loop = true;
     _time.resize(_rtplugin_vector.size());
     _last_time.resize(_rtplugin_vector.size());
     _period.resize(_rtplugin_vector.size());
-    
+
+    std::cout << "GazeboXBotPlugin Init() completed" << std::endl;
+
 
 }
 
 bool gazebo::GazeboXBotPlugin::loadPlugins()
 {
-    
+
     if(!_root_cfg["XBotRTPlugins"]){
         std::cerr << "ERROR in " << __func__ << "! Config file does NOT contain mandatory node XBotRTPlugins!" << std::endl;
         return false;
     }
     else{
-        
+
         if(!_root_cfg["XBotRTPlugins"]["plugins"]){
             std::cerr << "ERROR in " << __func__ << "!XBotRTPlugins node does NOT contain mandatory node plugins!" << std::endl;
         return false;
         }
         else{
-            
+
             for(const auto& plugin : _root_cfg["XBotRTPlugins"]["plugins"]){
                 _rtplugin_names.push_back(plugin.as<std::string>());
             }
         }
-        
-    }
-    
 
-    
+    }
+
+
+
     bool success = true;
-    
+
     for( const std::string& plugin_name : _rtplugin_names ){
-        
+
         std::string path_to_so;
         computeAbsolutePath(plugin_name, "/build/install/lib/lib", path_to_so);
         path_to_so += std::string(".so");
-        
+
         std::string factory_name = plugin_name + std::string("_factory");
-        
+
         auto factory_ptr = std::make_shared<shlibpp::SharedLibraryClassFactory<XBot::XBotPlugin>>(path_to_so.c_str(), factory_name.c_str());
-        
+
         if (!factory_ptr->isValid()) {
             // NOTE print to celebrate the wizard
             printf("error (%s) : %s\n", shlibpp::Vocab::decode(factory_ptr->getStatus()).c_str(),
@@ -173,40 +186,40 @@ bool gazebo::GazeboXBotPlugin::loadPlugins()
         else{
             std::cout << "Found plugin " << plugin_name << "!" << std::endl;
         }
-        
+
         _rtplugin_factory.push_back(factory_ptr);
-        
+
         auto plugin_ptr = std::make_shared<shlibpp::SharedLibraryClass<XBot::XBotPlugin>>(*factory_ptr);
-        
+
         _rtplugin_vector.push_back(plugin_ptr);
 
     }
 
     return success;
-    
-    
-    
+
+
+
 }
 
 bool gazebo::GazeboXBotPlugin::initPlugins()
 {
-    
+
     std::shared_ptr<XBot::IXBotModel> actual_model = std::make_shared<XBot::XBotCoreModel>(_XBotModel);
-    
+
     std::shared_ptr<XBot::IXBotJoint> actual_joint(this,  [](XBot::IXBotJoint* ptr){return;});
     std::shared_ptr<XBot::IXBotChain> actual_chain(this,  [](XBot::IXBotChain* ptr){return;});
     std::shared_ptr<XBot::IXBotRobot> actual_robot(this, [](XBot::IXBotRobot* ptr){return;});
     std::shared_ptr<XBot::IXBotFT> actual_ft;
-    
+
     XBot::SharedMemory::Ptr shared_memory = std::make_shared<XBot::SharedMemory>();
-    
+
     bool ret = true;
     for(int i = 0; i < _rtplugin_vector.size(); i++) {
         if(!(*_rtplugin_vector[i])->init( _path_to_config,
                                 _rtplugin_names[i],
                                 shared_memory,
                                 actual_joint,
-                                actual_model, 
+                                actual_model,
                                 actual_chain,
                                 actual_robot,
                                 actual_ft)) {
@@ -217,31 +230,41 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
     return ret;
 }
 
+void gazebo::GazeboXBotPlugin::close_all()
+{
+    std::cout << "void gazebo::GazeboXBotPlugin::close_all()" << std::endl;
+
+    for( const auto& plugin : _rtplugin_vector ){
+        (*plugin)->close();
+    }
+
+}
+
 
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
-    
-    
+
+
     for( int i = 0; i < _rtplugin_vector.size(); i++){
-        
+
         const auto& plugin = _rtplugin_vector[i];
-        
+
         _time[i] = _world->GetSimTime().Double();
-        
+
         if(_first_loop){
             _period[i] = 0;
         }
         else{
             _period[i] = _time[i] - _last_time[i];
         }
-        
+
         (*plugin)->run(_time[i], _period[i]);
-        
+
     }
-    
+
     _last_time = _time;
     _first_loop = false;
-    
+
     for( auto& pair : _joint_controller_map ){
         pair.second->sendControlInput();
     }
@@ -250,7 +273,7 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 void gazebo::GazeboXBotPlugin::Reset()
 {
     gazebo::ModelPlugin::Reset();
-    std::cout << "Reset()" << std::endl;     
+    std::cout << "Reset()" << std::endl;
 }
 
 
@@ -259,7 +282,7 @@ bool gazebo::GazeboXBotPlugin::get_link_pos ( int joint_id, float& link_pos )
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     auto it = _jointMap.find(current_joint_name);
-    
+
     if(current_joint_name != "" && it != _jointMap.end()) {
         link_pos = (it->second)->GetAngle(0).Radian();
         return true;
@@ -286,7 +309,7 @@ bool gazebo::GazeboXBotPlugin::get_link_vel ( int joint_id, int16_t& link_vel )
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     auto it = _jointMap.find(current_joint_name);
-    
+
     if(current_joint_name != "" && it != _jointMap.end()) {
         link_vel = (it->second)->GetVelocity(0)*1000.;
         return true;
@@ -305,18 +328,18 @@ bool gazebo::GazeboXBotPlugin::get_temperature ( int joint_id, uint16_t& tempera
 
 bool gazebo::GazeboXBotPlugin::get_gains(int joint_id, std::vector< uint16_t >& gain_vector)
 {
- 
+
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     auto it = _joint_controller_map.find(current_joint_name);
 
-    
+
     if(current_joint_name != "" && it != _joint_controller_map.end()){
         if(gain_vector.size() < 2){
             gain_vector.assign(2, 0);
         }
         gain_vector[0] = it->second->getP();
         gain_vector[1] = it->second->getD();
-        
+
         return true;
     }
 
@@ -328,7 +351,7 @@ bool gazebo::GazeboXBotPlugin::get_motor_pos ( int joint_id, float& motor_pos )
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     auto it = _jointMap.find(current_joint_name);
-    
+
     if(current_joint_name != "" && it != _jointMap.end()) {
         motor_pos = (it->second)->GetAngle(0).Radian();
         // NOTE we return false because we are reading the link position form gazebo TBD a plugin should simulate this
@@ -344,7 +367,7 @@ bool gazebo::GazeboXBotPlugin::get_motor_vel ( int joint_id, int16_t& motor_vel 
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     auto it = _jointMap.find(current_joint_name);
-    
+
     if(current_joint_name != "" && it != _jointMap.end()) {
         motor_vel = (it->second)->GetVelocity(0)*1000.;
         // NOTE we return false because we are reading the link position form gazebo TBD a plugin should simulate this
@@ -373,7 +396,7 @@ bool gazebo::GazeboXBotPlugin::get_torque ( int joint_id, float& torque )
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     auto it = _jointMap.find(current_joint_name);
-    
+
     if(current_joint_name != "" && it != _jointMap.end()) {
         torque = (it->second)->GetForce(0);
         return true;
@@ -400,10 +423,10 @@ bool gazebo::GazeboXBotPlugin::set_gains ( int joint_id, const std::vector< uint
         std::cerr << "ERROR in " << __func__ << "! Provided gains vector size is " << gains.size() << " less than 2!" << std::endl;
         return false;
     }
-    
+
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     auto it = _joint_controller_map.find(current_joint_name);
-    
+
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
         it->second->setGains(gains[0], 0, gains[1]);
         return true;
@@ -421,7 +444,7 @@ bool gazebo::GazeboXBotPlugin::set_pos_ref ( int joint_id, const float& pos_ref 
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     auto it = _joint_controller_map.find(current_joint_name);
-    
+
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
         it->second->setPositionReference(pos_ref);
         return true;
@@ -434,7 +457,7 @@ bool gazebo::GazeboXBotPlugin::set_tor_ref ( int joint_id, const int16_t& tor_re
 {
     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
     auto it = _joint_controller_map.find(current_joint_name);
-    
+
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
         it->second->setTorqueReference(double(tor_ref) / 50); // NOTE torque scaling random but suitable to avoid the int16t overflow
         return true;
@@ -451,18 +474,18 @@ bool gazebo::GazeboXBotPlugin::set_ts ( int joint_id, const uint16_t& ts )
 bool gazebo::GazeboXBotPlugin::set_vel_ref ( int joint_id, const int16_t& vel_ref )
 {
     // TBD support velocity reference
-    
+
 //     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
 //     auto it = _jointMap.find(current_joint_name);
-//     
+//
 //     if(current_joint_name != "" && it != _jointMap.end()) {
 //         _model->GetJointController()->SetVelocityTarget((it->second)->GetScopedName(), vel_ref);
 //         _model->GetJointController()->Update();
 //         return true;
 //     }
-    
+
     return false;
-    
+
 }
 
 
@@ -501,52 +524,52 @@ bool gazebo::GazeboXBotPlugin::parseYAML ( const std::string& path_to_cfg )
         std::cerr << "ERROR in " << __func__ << "! Can NOT open " << path_to_cfg << "!" << std::endl;
         return false;
     }
-    
+
 
     _root_cfg = YAML::LoadFile(path_to_cfg);
     YAML::Node x_bot_interface;
     if(_root_cfg["XBotInterface"]) {
-        x_bot_interface = _root_cfg["XBotInterface"]; 
+        x_bot_interface = _root_cfg["XBotInterface"];
     }
     else {
         std::cerr << "ERROR in " << __func__ << " : YAML file  " << path_to_cfg << "  does not contain XBotInterface mandatory node!!" << std::endl;
         return false;
     }
-   
+
     // check the urdf_filename
     if(x_bot_interface["urdf_path"]) {
-        computeAbsolutePath(x_bot_interface["urdf_path"].as<std::string>(), 
+        computeAbsolutePath(x_bot_interface["urdf_path"].as<std::string>(),
                             "/",
-                            _urdf_path); 
+                            _urdf_path);
     }
     else {
         std::cerr << "ERROR in " << __func__ << " : XBotInterface node of  " << path_to_cfg << "  does not contain urdf_path mandatory node!!" << std::endl;
         return false;
     }
-    
+
     // check the srdf_filename
     if(x_bot_interface["srdf_path"]) {
         computeAbsolutePath(x_bot_interface["srdf_path"].as<std::string>(),
                             "/",
-                            _srdf_path); 
+                            _srdf_path);
     }
     else {
         std::cerr << "ERROR in " << __func__ << " : XBotInterface node of  " << path_to_cfg << "  does not contain srdf_path mandatory node!!" << std::endl;
         return false;
     }
-    
+
     // check joint_map_config
     if(x_bot_interface["joint_map_path"]) {
-        computeAbsolutePath(x_bot_interface["joint_map_path"].as<std::string>(), 
+        computeAbsolutePath(x_bot_interface["joint_map_path"].as<std::string>(),
                             "/",
-                            _joint_map_config); 
+                            _joint_map_config);
     }
     else {
         std::cerr << "ERROR in " << __func__ << " : XBotInterface node of  " << path_to_cfg << "  does not contain joint_map_path mandatory node!!" << std::endl;
         return false;
     }
-    
-    
+
+
 
 }
 
@@ -886,7 +909,7 @@ bool gazebo::GazeboXBotPlugin::set_robot_aux(const std::map< int, float >& aux)
     }
     return ret;
 }
-// 
+//
 
 
 
@@ -926,7 +949,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_link_pos(std::string chain_name, std::m
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_link_pos() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -945,7 +968,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_link_pos(std::string chain_name, std::m
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_link_pos() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -966,7 +989,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_motor_pos(std::string chain_name, std::
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_motor_pos() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -985,7 +1008,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_motor_pos(std::string chain_name, std::
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_motor_pos() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1006,7 +1029,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::m
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_link_vel() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1025,7 +1048,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::m
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_link_vel() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1046,7 +1069,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_motor_vel(std::string chain_name, std::
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_motor_vel() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1065,7 +1088,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_motor_vel(std::string chain_name, std::
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_motor_vel() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1086,7 +1109,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_torque() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1105,7 +1128,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_torque() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1126,7 +1149,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_temperature(std::string chain_name, std
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_temperature() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1145,7 +1168,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_temperature(std::string chain_name, std
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_temperature() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1166,7 +1189,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_fault(std::string chain_name, std::map<
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_fault() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1185,7 +1208,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_fault(std::string chain_name, std::map<
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_fault() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1206,7 +1229,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_rtt(std::string chain_name, std::map< s
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_rtt() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1225,7 +1248,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_rtt(std::string chain_name, std::map< i
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_rtt() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1246,7 +1269,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_op_idx_ack(std::string chain_name, std:
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_op_idx_ack() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1265,7 +1288,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_op_idx_ack(std::string chain_name, std:
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_op_idx_ack() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1286,7 +1309,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_aux(std::string chain_name, std::map< s
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_aux() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1305,7 +1328,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_aux(std::string chain_name, std::map< i
         }
         return true;
     }
-    
+
     printf("ERROR: get_chain_aux() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1330,7 +1353,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_pos_ref(std::string chain_name, const s
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_pos_ref() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1350,7 +1373,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_pos_ref(std::string chain_name, const s
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_pos_ref() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1372,7 +1395,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_vel_ref(std::string chain_name, const s
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_vel_ref() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1392,7 +1415,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_vel_ref(std::string chain_name, const s
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_vel_ref() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1414,7 +1437,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_tor_ref(std::string chain_name, const s
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_tor_ref() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1434,7 +1457,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_tor_ref(std::string chain_name, const s
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_tor_ref() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1456,7 +1479,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_gains(std::string chain_name, const std
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_pos_ref() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1476,7 +1499,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_gains(std::string chain_name, const std
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_gains() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1498,7 +1521,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_fault_ack(std::string chain_name, const
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_fault_ack() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1518,7 +1541,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_fault_ack(std::string chain_name, const
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_fault_ack() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1540,7 +1563,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_ts(std::string chain_name, const std::m
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_ts() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1560,7 +1583,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_ts(std::string chain_name, const std::m
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_ts() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1582,7 +1605,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_op_idx_aux(std::string chain_name, cons
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_op_idx_aux() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1602,7 +1625,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_op_idx_aux(std::string chain_name, cons
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_op_idx_aux() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1624,7 +1647,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_aux(std::string chain_name, const std::
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_aux() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
@@ -1644,7 +1667,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_aux(std::string chain_name, const std::
         }
         return true;
     }
-    
+
     printf("ERROR: set_chain_aux() on chain %s, that does not exits in the _XBotRobot\n", chain_name.c_str());
     return false;
 }
