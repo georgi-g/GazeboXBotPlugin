@@ -73,6 +73,20 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 
     computeAbsolutePath(_path_to_config, "/", _path_to_config);
 
+    // init XBotCoreModel
+    // parse the YAML file to initialize internal variables
+    parseYAML(_path_to_config);
+    
+    // initialize the model
+    if (!_XBotModel.init(_urdf_path, _srdf_path, _joint_map_config)) {
+        printf("ERROR: model initialization failed, please check the urdf_path and srdf_path in your YAML config file.\n");
+        return;
+    }
+    // generate the robot
+    _XBotModel.generate_robot();
+    // get the map of joint
+    _XBotRobot = _XBotModel.get_robot();
+
 }
 
 
@@ -83,25 +97,11 @@ void gazebo::GazeboXBotPlugin::Init()
     gazebo::ModelPlugin::Init();
     std::cout << "GazeboXBotPlugin Init()" << std::endl;
 
-    // init XBotCoreModel
-    // parse the YAML file to initialize internal variables
-    parseYAML(_path_to_config);
-
     // Load plugins
     loadPlugins();
 
     // Init plugins
     initPlugins();
-
-    // initialize the model
-    if (!_XBotModel.init(_urdf_path, _srdf_path, _joint_map_config)) {
-        printf("ERROR: model initialization failed, please check the urdf_path and srdf_path in your YAML config file.\n");
-        return;
-    }
-    // generate the robot
-    _XBotModel.generate_robot();
-    // get the map of joint
-    _XBotRobot = _XBotModel.get_robot();
 
     // iterate over Gazebo model Joint vector and store Joint pointers in a map
     const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
