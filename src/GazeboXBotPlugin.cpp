@@ -86,23 +86,8 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     _XBotModel.generate_robot();
     // get the map of joint
     _XBotRobot = _XBotModel.get_robot();
-
-}
-
-
-
-
-void gazebo::GazeboXBotPlugin::Init()
-{
-    gazebo::ModelPlugin::Init();
-    std::cout << "GazeboXBotPlugin Init()" << std::endl;
-
-    // Load plugins
-    loadPlugins();
-
-    // Init plugins
-    initPlugins();
-
+    
+    
     // iterate over Gazebo model Joint vector and store Joint pointers in a map
     const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
     for (unsigned int gazebo_joint = 0; gazebo_joint < gazebo_models_joints.size(); gazebo_joint++) {
@@ -123,6 +108,22 @@ void gazebo::GazeboXBotPlugin::Init()
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
 
     }
+
+}
+
+
+
+
+void gazebo::GazeboXBotPlugin::Init()
+{
+    gazebo::ModelPlugin::Init();
+    std::cout << "GazeboXBotPlugin Init()" << std::endl;
+
+    // Load plugins
+    loadPlugins();
+
+    // Init plugins
+    initPlugins();
 
     _first_loop = true;
     _time.resize(_rtplugin_vector.size());
