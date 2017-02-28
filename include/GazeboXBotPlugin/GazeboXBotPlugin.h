@@ -28,7 +28,7 @@
 
 #include <XBotCore-interfaces/All.h>
 #include <GazeboXBotPlugin/JointController.h>
-#include <XBotCoreModel.h>
+#include <XBotInterface/XBotInterface.h>
 
 #include <SharedLibraryClassFactory.h>
 #include <SharedLibraryClass.h>
