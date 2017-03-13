@@ -28,7 +28,8 @@ namespace XBot {
         
     public:
         
-        JointImpedanceController(gazebo::physics::JointPtr joint);
+        JointImpedanceController( gazebo::physics::JointPtr joint,
+                                  gazebo::transport::PublisherPtr joint_cmd);
 
     protected:
         

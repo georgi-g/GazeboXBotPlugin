@@ -87,6 +87,11 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     // get the map of joint
     _XBotRobot = _XBotModel.get_robot();
     
+        
+    _gazeboNode = gazebo::transport::NodePtr(new gazebo::transport::Node);
+    _gazeboNode->Init(this->_model->GetWorld()->GetName());
+    _jointCommandPublisher = _gazeboNode->Advertise<gazebo::msgs::JointCmd>(std::string("~/") + this->_model->GetName() + "/joint_cmd");
+    
     
     // iterate over Gazebo model Joint vector and store Joint pointers in a map
     const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
@@ -100,9 +105,9 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 //                                                       _model->GetJointController() );
 
         _joint_controller_map[gazebo_joint_name] =
-            std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
+            std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name), _jointCommandPublisher );
 
-        _joint_controller_map.at(gazebo_joint_name)->setGains(1000, 0, 1);
+        _joint_controller_map.at(gazebo_joint_name)->setGains(1000, 0, 5);
         _joint_controller_map.at(gazebo_joint_name)->enableFeedforward();
 
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;

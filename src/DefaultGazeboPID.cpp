@@ -31,9 +31,10 @@ bool DefaultGazeboPID::enableFeedforward()
     return false;
 }
 
-DefaultGazeboPID::DefaultGazeboPID(gazebo::physics::JointPtr joint, 
-                                           gazebo::physics::JointControllerPtr joint_ctrl): 
-    JointController(joint),
+DefaultGazeboPID::DefaultGazeboPID( gazebo::physics::JointPtr joint, 
+                                    gazebo::transport::PublisherPtr joint_cmd,
+                                    gazebo::physics::JointControllerPtr joint_ctrl): 
+    JointController(joint, joint_cmd),
     _joint_ctrl(joint_ctrl)
 {
 

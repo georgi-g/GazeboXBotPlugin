@@ -28,8 +28,9 @@ namespace XBot {
         
     public:
         
-        DefaultGazeboPID(gazebo::physics::JointPtr joint,
-                                 gazebo::physics::JointControllerPtr joint_ctrl);
+        DefaultGazeboPID( gazebo::physics::JointPtr joint,
+                          gazebo::transport::PublisherPtr joint_cmd,
+                          gazebo::physics::JointControllerPtr joint_ctrl);
 
                 
         virtual bool disableFeedforward();

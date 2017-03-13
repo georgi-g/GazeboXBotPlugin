@@ -21,7 +21,9 @@
 
 namespace XBot {
     
-JointImpedanceController::JointImpedanceController(gazebo::physics::JointPtr joint): JointController(joint)
+JointImpedanceController::JointImpedanceController( gazebo::physics::JointPtr joint,
+                                                    gazebo::transport::PublisherPtr joint_cmd) : 
+    JointController(joint, joint_cmd)
 {
 
 }

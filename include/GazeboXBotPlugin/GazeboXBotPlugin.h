@@ -28,7 +28,7 @@
 
 #include <XBotCore-interfaces/All.h>
 #include <GazeboXBotPlugin/JointController.h>
-#include <XBotInterface/XBotInterface.h>
+#include <XBotCoreModel.h>
 
 #include <SharedLibraryClassFactory.h>
 #include <SharedLibraryClass.h>
@@ -249,6 +249,10 @@ private:
 
      // pointer to sdf
      sdf::ElementPtr _sdf;
+     
+             
+    gazebo::transport::NodePtr _gazeboNode;
+    gazebo::transport::PublisherPtr _jointCommandPublisher;
 
      // NOTE IXBotJoint getters
     virtual bool get_link_pos(int joint_id, float& link_pos) final;

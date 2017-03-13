@@ -20,7 +20,12 @@
 #ifndef __GAZEBO_XBOT_PLUGIN_JOINT_CONTROLLER_H__
 #define __GAZEBO_XBOT_PLUGIN_JOINT_CONTROLLER_H__
 
+#include <gazebo/gazebo.hh>
+#include <gazebo/common/Plugin.hh>
+#include <boost/bind.hpp>
 #include <gazebo/physics/physics.hh>
+#include <gazebo/common/common.hh>
+
 #include <memory>
 
 namespace XBot {
@@ -31,7 +36,7 @@ namespace XBot {
         
         typedef std::shared_ptr<JointController> Ptr;
         
-        JointController(gazebo::physics::JointPtr joint);
+        JointController(gazebo::physics::JointPtr joint, gazebo::transport::PublisherPtr joint_cmd);
 
         bool setGains(double p, double i, double d);
         
@@ -70,6 +75,9 @@ namespace XBot {
         double _p, _i, _d;
         double _pos_ref, _vel_ref, _tau_ref;
         bool _feedforward_enabled;
+        
+        gazebo::transport::PublisherPtr _joint_cmd;
+
         
 
     };

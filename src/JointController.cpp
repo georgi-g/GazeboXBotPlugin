@@ -21,8 +21,10 @@
 
 namespace XBot {
     
-JointController::JointController(gazebo::physics::JointPtr joint):
+JointController::JointController(gazebo::physics::JointPtr joint,
+                                 gazebo::transport::PublisherPtr joint_cmd ) :
     _joint(joint),
+    _joint_cmd(joint_cmd),
     _p(0),
     _i(0),
     _d(0),
@@ -92,7 +94,16 @@ bool JointController::set_gains_internal(double p, double i, double d)
 
 void JointController::sendControlInput()
 {
-    _joint->SetForce(0, compute_control_input());
+    gazebo::msgs::JointCmd j_cmd;
+    j_cmd.set_name(_joint->GetScopedName());
+    j_cmd.mutable_position()->set_target(getPositionReference());
+    j_cmd.mutable_position()->set_p_gain(1000);
+    j_cmd.mutable_position()->set_d_gain(1);
+    
+    _joint_cmd->WaitForConnection();
+    _joint_cmd->Publish(j_cmd);
+    
+//     _joint->SetForce(0, compute_control_input());
 }
 
 void JointController::setReference(double pos_ref, double vel_ref, double tau_ref)
