@@ -20,27 +20,30 @@
 #ifndef __GAZEBO_XBOT_PLUGIN_H__
 #define __GAZEBO_XBOT_PLUGIN_H__
 
+#include <boost/bind.hpp>
+
 #include <gazebo/gazebo.hh>
 #include <gazebo/common/Plugin.hh>
-#include <boost/bind.hpp>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
 
 #include <XBotCore-interfaces/All.h>
-#include <GazeboXBotPlugin/JointController.h>
+
 #include <XBotInterface/XBotInterface.h>
 
-#include <SharedLibraryClassFactory.h>
-#include <SharedLibraryClass.h>
+#include <XCM/XBotPluginHandler.h>
+
+#include <GazeboXBotPlugin/JointController.h>
 
 
 
-
-namespace gazebo {
-class GazeboXBotPlugin : public ModelPlugin,
-                         public XBot::IXBotJoint,
-                         public XBot::IXBotChain,
-                         public XBot::IXBotRobot
+namespace gazebo
+{
+class GazeboXBotPlugin : 
+    public ModelPlugin,
+    public XBot::IXBotJoint,
+    public XBot::IXBotChain,
+    public XBot::IXBotRobot
 
 {
 
@@ -71,7 +74,7 @@ public :
      *
      * @return void
      */
-     virtual void Init();
+    virtual void Init();
 
     /**
      * @brief Custom plugin reset behavior.
@@ -196,61 +199,55 @@ protected:
 
 private:
 
-     void close_all();
 
-     void XBotUpdate(const common::UpdateInfo & _info);
 
-     bool parseYAML ( const std::string &path_to_cfg ); // TBD do it with UTILS
+    void XBotUpdate(const common::UpdateInfo& _info);
 
-     static bool computeAbsolutePath ( const std::string& input_path,
-                                       const std::string& midlle_path,
-                                       std::string& absolute_path ); // TBD do it with UTILS
+    static bool computeAbsolutePath(const std::string& input_path,
+                                    const std::string& midlle_path,
+                                    std::string& absolute_path);  // TBD do it with UTILS
 
-     bool loadPlugins();
+    bool loadPlugins();
 
-     bool initPlugins();
+    bool initPlugins();
 
-     // internal XBotCoreModel object: it does the trick using URDF, SRDF and joint map configuration
-     XBot::XBotCoreModel _XBotModel;
+    void close_all();
 
-     std::map<std::string, std::vector<int>> _XBotRobot;
+    double get_time();
 
-     // URDF SRDF and Joint Map Configuration
-     std::string _urdf_path;
-     std::string _srdf_path;
-     std::string _joint_map_config;
-     std::string _path_to_config;
 
-     YAML::Node _root_cfg;
+    // xbot robot
+    XBot::RobotInterface::Ptr _robot;
 
-     // Dynamic loading related variables
-     std::vector<std::shared_ptr<shlibpp::SharedLibraryClassFactory<XBot::XBotPlugin>>> _rtplugin_factory;
-     std::vector<std::string> _rtplugin_names;
-     std::vector<std::shared_ptr<shlibpp::SharedLibraryClass<XBot::XBotPlugin>>> _rtplugin_vector;
+    // xbot plugin handler
+    XBot::PluginHandler::Ptr _pluginHandler;
 
-     std::vector<double> _last_time, _time, _period, _elapsed_time;
-     bool _first_loop;
+    // robot map
+    std::map<std::string, std::vector<int>> _XBotRobot;
 
-     // Gazebo joint names vector
-     std::vector<std::string> _jointNames;
+    // path to config file
+    std::string _path_to_config;
 
-     // Gazebo joint map
-     std::map<std::string, gazebo::physics::JointPtr> _jointMap;
-     std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;
+    // Gazebo joint names vector
+    std::vector<std::string> _jointNames;
 
-     // model
-     physics::ModelPtr _model;
+    // Gazebo joint map
+    std::map<std::string, gazebo::physics::JointPtr> _jointMap;
+    std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;
 
-     // world
-     gazebo::physics::WorldPtr _world;
+    // model
+    physics::ModelPtr _model;
 
-     // Pointer to the update event connection
-     event::ConnectionPtr _updateConnection;
+    // world
+    gazebo::physics::WorldPtr _world;
 
-     // pointer to sdf
-     sdf::ElementPtr _sdf;
+    // Pointer to the update event connection
+    event::ConnectionPtr _updateConnection;
 
-     // NOTE IXBotJoint getters
+    // pointer to sdf
+    sdf::ElementPtr _sdf;
+
+    // NOTE IXBotJoint getters
     virtual bool get_link_pos(int joint_id, float& link_pos) final;
 
     virtual bool get_motor_pos(int joint_id, float& motor_pos) final;
@@ -294,7 +291,8 @@ private:
 };
 
 // Register this plugin with the simulator
-GZ_REGISTER_MODEL_PLUGIN ( GazeboXBotPlugin )
+GZ_REGISTER_MODEL_PLUGIN(GazeboXBotPlugin)
+
 }
 
 #endif

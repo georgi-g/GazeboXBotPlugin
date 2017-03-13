@@ -18,12 +18,18 @@
 */
 
 
+#include <iostream>
+#include <csignal>
+
+#include <boost/function.hpp>
+
+#include <XCM/TimeProvider.h>
+
 #include<GazeboXBotPlugin/GazeboXBotPlugin.h>
 
-#include<iostream>
 #include <GazeboXBotPlugin/DefaultGazeboPID.h>
 #include <GazeboXBotPlugin/JointImpedanceController.h>
-#include <csignal>
+
 
 sig_atomic_t g_loop_ok = 1;
 
@@ -50,6 +56,8 @@ gazebo::GazeboXBotPlugin::~GazeboXBotPlugin()
 void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 {
     std::cout << "GazeboXBotPlugin Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)" << std::endl;
+//     int a;
+//     std::cin >> a;
 
     // Store the pointer to the model
     _model = _parent;
@@ -68,25 +76,25 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         std::cerr << "ERROR in " << __func__ << "! Missing element path_to_config_file!" << std::endl;
         return;
     }
-
     _path_to_config = _sdf->GetElement("path_to_config_file")->Get<std::string>();
 
+    // compute path
     computeAbsolutePath(_path_to_config, "/", _path_to_config);
-
-    // init XBotCoreModel
-    // parse the YAML file to initialize internal variables
-    parseYAML(_path_to_config);
     
-    // initialize the model
-    if (!_XBotModel.init(_urdf_path, _srdf_path, _joint_map_config)) {
-        printf("ERROR: model initialization failed, please check the urdf_path and srdf_path in your YAML config file.\n");
-        return;
-    }
-    // generate the robot
-    _XBotModel.generate_robot();
-    // get the map of joint
-    _XBotRobot = _XBotModel.get_robot();
+    // create robot from config file and any map
+    XBot::AnyMapPtr anymap = std::make_shared<XBot::AnyMap>();
+    std::shared_ptr<XBot::IXBotJoint> xbot_joint(this);
+    (*anymap)["XBotJoint"] = boost::any(xbot_joint);
     
+    _robot = XBot::RobotInterface::getRobot(_path_to_config, anymap, "XBotRT");
+    
+    // create time provider function
+    boost::function<double()> time_func = boost::bind(&gazebo::GazeboXBotPlugin::get_time, this);
+    // create time provider
+    auto time_provider = std::make_shared<XBot::TimeProviderFunction<boost::function<double()>>>(time_func);
+    
+    // create plugin handler
+    _pluginHandler = std::make_shared<XBot::PluginHandler>(_robot, time_provider);
     
     // iterate over Gazebo model Joint vector and store Joint pointers in a map
     const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
@@ -117,18 +125,13 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 void gazebo::GazeboXBotPlugin::Init()
 {
     gazebo::ModelPlugin::Init();
-    std::cout << "GazeboXBotPlugin Init()" << std::endl;
+    std::cout << "GazeboXBotPlugin Init() started" << std::endl;
 
     // Load plugins
     loadPlugins();
 
     // Init plugins
     initPlugins();
-
-    _first_loop = true;
-    _time.resize(_rtplugin_vector.size());
-    _last_time.resize(_rtplugin_vector.size());
-    _period.resize(_rtplugin_vector.size());
 
     std::cout << "GazeboXBotPlugin Init() completed" << std::endl;
 
@@ -137,104 +140,28 @@ void gazebo::GazeboXBotPlugin::Init()
 
 bool gazebo::GazeboXBotPlugin::loadPlugins()
 {
-
-    if(!_root_cfg["XBotRTPlugins"]){
-        std::cerr << "ERROR in " << __func__ << "! Config file does NOT contain mandatory node XBotRTPlugins!" << std::endl;
-        return false;
-    }
-    else{
-
-        if(!_root_cfg["XBotRTPlugins"]["plugins"]){
-            std::cerr << "ERROR in " << __func__ << "!XBotRTPlugins node does NOT contain mandatory node plugins!" << std::endl;
-        return false;
-        }
-        else{
-
-            for(const auto& plugin : _root_cfg["XBotRTPlugins"]["plugins"]){
-                _rtplugin_names.push_back(plugin.as<std::string>());
-            }
-        }
-
-    }
-
-
-
-    bool success = true;
-
-    for( const std::string& plugin_name : _rtplugin_names ){
-
-        std::string path_to_so;
-        computeAbsolutePath(plugin_name, "/build/install/lib/lib", path_to_so);
-        path_to_so += std::string(".so");
-
-        std::string factory_name = plugin_name + std::string("_factory");
-
-        auto factory_ptr = std::make_shared<shlibpp::SharedLibraryClassFactory<XBot::XBotPlugin>>(path_to_so.c_str(), factory_name.c_str());
-
-        if (!factory_ptr->isValid()) {
-            // NOTE print to celebrate the wizard
-            printf("error (%s) : %s\n", shlibpp::Vocab::decode(factory_ptr->getStatus()).c_str(),
-                factory_ptr->getLastNativeError().c_str());
-            std::cerr << "Unable to load plugin " << plugin_name << "!" << std::endl;
-            success = false;
-            continue;
-        }
-        else{
-            std::cout << "Found plugin " << plugin_name << "!" << std::endl;
-        }
-
-        _rtplugin_factory.push_back(factory_ptr);
-
-        auto plugin_ptr = std::make_shared<shlibpp::SharedLibraryClass<XBot::XBotPlugin>>(*factory_ptr);
-
-        _rtplugin_vector.push_back(plugin_ptr);
-
-    }
-
-    return success;
-
-
-
+    return _pluginHandler->load_plugins();
 }
 
 bool gazebo::GazeboXBotPlugin::initPlugins()
 {
 
-    std::shared_ptr<XBot::IXBotModel> actual_model = std::make_shared<XBot::XBotCoreModel>(_XBotModel);
-
-    std::shared_ptr<XBot::IXBotJoint> actual_joint(this,  [](XBot::IXBotJoint* ptr){return;});
-    std::shared_ptr<XBot::IXBotChain> actual_chain(this,  [](XBot::IXBotChain* ptr){return;});
-    std::shared_ptr<XBot::IXBotRobot> actual_robot(this, [](XBot::IXBotRobot* ptr){return;});
-    std::shared_ptr<XBot::IXBotFT> actual_ft;
-
-    XBot::SharedMemory::Ptr shared_memory = std::make_shared<XBot::SharedMemory>();
-
-    bool ret = true;
-    for(int i = 0; i < _rtplugin_vector.size(); i++) {
-        if(!(*_rtplugin_vector[i])->init( _path_to_config,
-                                _rtplugin_names[i],
-                                shared_memory,
-                                actual_joint,
-                                actual_model,
-                                actual_chain,
-                                actual_robot,
-                                actual_ft)) {
-            printf("ERROR: plugin %s - init() failed\n", (*_rtplugin_vector[i])->name.c_str());
-            ret = false;
-        }
-    }
-    return ret;
+    return _pluginHandler->init_plugins();
 }
 
 void gazebo::GazeboXBotPlugin::close_all()
 {
     std::cout << "void gazebo::GazeboXBotPlugin::close_all()" << std::endl;
-
-    for( const auto& plugin : _rtplugin_vector ){
-        (*plugin)->close();
-    }
+    
+    _pluginHandler->close();
 
 }
+
+double gazebo::GazeboXBotPlugin::get_time()
+{
+    return _world->GetSimTime().Double();
+}
+
 
 
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
@@ -244,26 +171,8 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
         close_all();
         exit(1);
     }
-
-    for( int i = 0; i < _rtplugin_vector.size(); i++){
-
-        const auto& plugin = _rtplugin_vector[i];
-
-        _time[i] = _world->GetSimTime().Double();
-
-        if(_first_loop){
-            _period[i] = 0;
-        }
-        else{
-            _period[i] = _time[i] - _last_time[i];
-        }
-
-        (*plugin)->run(_time[i], _period[i]);
-
-    }
-
-    _last_time = _time;
-    _first_loop = false;
+    
+    _pluginHandler->run();
 
     for( auto& pair : _joint_controller_map ){
         pair.second->sendControlInput();
@@ -280,7 +189,7 @@ void gazebo::GazeboXBotPlugin::Reset()
 
 bool gazebo::GazeboXBotPlugin::get_link_pos ( int joint_id, float& link_pos )
 {
-    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
     auto it = _jointMap.find(current_joint_name);
 
     if(current_joint_name != "" && it != _jointMap.end()) {
@@ -307,7 +216,7 @@ bool gazebo::GazeboXBotPlugin::get_fault ( int joint_id, uint16_t& fault )
 
 bool gazebo::GazeboXBotPlugin::get_link_vel ( int joint_id, int16_t& link_vel )
 {
-    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
     auto it = _jointMap.find(current_joint_name);
 
     if(current_joint_name != "" && it != _jointMap.end()) {
@@ -329,7 +238,7 @@ bool gazebo::GazeboXBotPlugin::get_temperature ( int joint_id, uint16_t& tempera
 bool gazebo::GazeboXBotPlugin::get_gains(int joint_id, std::vector< uint16_t >& gain_vector)
 {
 
-    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
     auto it = _joint_controller_map.find(current_joint_name);
 
 
@@ -349,7 +258,7 @@ bool gazebo::GazeboXBotPlugin::get_gains(int joint_id, std::vector< uint16_t >& 
 
 bool gazebo::GazeboXBotPlugin::get_motor_pos ( int joint_id, float& motor_pos )
 {
-    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
     auto it = _jointMap.find(current_joint_name);
 
     if(current_joint_name != "" && it != _jointMap.end()) {
@@ -365,7 +274,7 @@ bool gazebo::GazeboXBotPlugin::get_motor_pos ( int joint_id, float& motor_pos )
 
 bool gazebo::GazeboXBotPlugin::get_motor_vel ( int joint_id, int16_t& motor_vel )
 {
-    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
     auto it = _jointMap.find(current_joint_name);
 
     if(current_joint_name != "" && it != _jointMap.end()) {
@@ -394,7 +303,7 @@ bool gazebo::GazeboXBotPlugin::get_rtt ( int joint_id, uint16_t& rtt )
 
 bool gazebo::GazeboXBotPlugin::get_torque ( int joint_id, float& torque )
 {
-    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
     auto it = _jointMap.find(current_joint_name);
 
     if(current_joint_name != "" && it != _jointMap.end()) {
@@ -424,7 +333,7 @@ bool gazebo::GazeboXBotPlugin::set_gains ( int joint_id, const std::vector< uint
         return false;
     }
 
-    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
     auto it = _joint_controller_map.find(current_joint_name);
 
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
@@ -442,7 +351,7 @@ bool gazebo::GazeboXBotPlugin::set_op_idx_aux ( int joint_id, const uint16_t& op
 
 bool gazebo::GazeboXBotPlugin::set_pos_ref ( int joint_id, const float& pos_ref )
 {
-    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
     auto it = _joint_controller_map.find(current_joint_name);
 
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
@@ -455,7 +364,7 @@ bool gazebo::GazeboXBotPlugin::set_pos_ref ( int joint_id, const float& pos_ref 
 
 bool gazebo::GazeboXBotPlugin::set_tor_ref ( int joint_id, const int16_t& tor_ref )
 {
-    std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
     auto it = _joint_controller_map.find(current_joint_name);
 
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
@@ -475,7 +384,7 @@ bool gazebo::GazeboXBotPlugin::set_vel_ref ( int joint_id, const int16_t& vel_re
 {
     // TBD support velocity reference
 
-//     std::string current_joint_name = _XBotModel.rid2Joint(joint_id);
+//     std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
 //     auto it = _jointMap.find(current_joint_name);
 //
 //     if(current_joint_name != "" && it != _jointMap.end()) {
@@ -517,61 +426,7 @@ bool gazebo::GazeboXBotPlugin::computeAbsolutePath (const std::string& input_pat
     return true;
 }
 
-bool gazebo::GazeboXBotPlugin::parseYAML ( const std::string& path_to_cfg )
-{
-    std::ifstream fin(path_to_cfg);
-    if (fin.fail()) {
-        std::cerr << "ERROR in " << __func__ << "! Can NOT open " << path_to_cfg << "!" << std::endl;
-        return false;
-    }
 
-
-    _root_cfg = YAML::LoadFile(path_to_cfg);
-    YAML::Node x_bot_interface;
-    if(_root_cfg["XBotInterface"]) {
-        x_bot_interface = _root_cfg["XBotInterface"];
-    }
-    else {
-        std::cerr << "ERROR in " << __func__ << " : YAML file  " << path_to_cfg << "  does not contain XBotInterface mandatory node!!" << std::endl;
-        return false;
-    }
-
-    // check the urdf_filename
-    if(x_bot_interface["urdf_path"]) {
-        computeAbsolutePath(x_bot_interface["urdf_path"].as<std::string>(),
-                            "/",
-                            _urdf_path);
-    }
-    else {
-        std::cerr << "ERROR in " << __func__ << " : XBotInterface node of  " << path_to_cfg << "  does not contain urdf_path mandatory node!!" << std::endl;
-        return false;
-    }
-
-    // check the srdf_filename
-    if(x_bot_interface["srdf_path"]) {
-        computeAbsolutePath(x_bot_interface["srdf_path"].as<std::string>(),
-                            "/",
-                            _srdf_path);
-    }
-    else {
-        std::cerr << "ERROR in " << __func__ << " : XBotInterface node of  " << path_to_cfg << "  does not contain srdf_path mandatory node!!" << std::endl;
-        return false;
-    }
-
-    // check joint_map_config
-    if(x_bot_interface["joint_map_path"]) {
-        computeAbsolutePath(x_bot_interface["joint_map_path"].as<std::string>(),
-                            "/",
-                            _joint_map_config);
-    }
-    else {
-        std::cerr << "ERROR in " << __func__ << " : XBotInterface node of  " << path_to_cfg << "  does not contain joint_map_path mandatory node!!" << std::endl;
-        return false;
-    }
-
-
-
-}
 
 
 
@@ -935,12 +790,12 @@ bool gazebo::GazeboXBotPlugin::set_robot_aux(const std::map< int, float >& aux)
 
 bool gazebo::GazeboXBotPlugin::get_chain_link_pos(std::string chain_name, std::map< std::string, float>& link_pos)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             link_pos[actual_joint_name] = 0;
             if( !get_link_pos(actual_chain_enabled_joints[i], link_pos.at(actual_joint_name)))  {
                 printf("ERROR: get_chain_link_pos() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -956,7 +811,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_link_pos(std::string chain_name, std::m
 
 bool gazebo::GazeboXBotPlugin::get_chain_link_pos(std::string chain_name, std::map< int, float >& link_pos)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -975,12 +830,12 @@ bool gazebo::GazeboXBotPlugin::get_chain_link_pos(std::string chain_name, std::m
 
 bool gazebo::GazeboXBotPlugin::get_chain_motor_pos(std::string chain_name, std::map< std::string, float >& motor_pos)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             motor_pos[actual_joint_name] = 0;
             if( !get_motor_pos(actual_chain_enabled_joints[i], motor_pos.at(actual_joint_name)))  {
                 printf("ERROR: get_chain_motor_pos() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -996,7 +851,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_motor_pos(std::string chain_name, std::
 
 bool gazebo::GazeboXBotPlugin::get_chain_motor_pos(std::string chain_name, std::map< int, float >& motor_pos)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1015,12 +870,12 @@ bool gazebo::GazeboXBotPlugin::get_chain_motor_pos(std::string chain_name, std::
 
 bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::map< std::string, int16_t >& link_vel)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             link_vel[actual_joint_name] = 0;
             if( !get_link_vel(actual_chain_enabled_joints[i], link_vel.at(actual_joint_name)))  {
                 printf("ERROR: get_chain_link_vel() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1036,7 +891,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::m
 
 bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::map< int, int16_t >& link_vel)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1055,12 +910,12 @@ bool gazebo::GazeboXBotPlugin::get_chain_link_vel(std::string chain_name, std::m
 
 bool gazebo::GazeboXBotPlugin::get_chain_motor_vel(std::string chain_name, std::map< std::string, int16_t >& motor_vel)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             motor_vel[actual_joint_name] = 0;
             if( !get_motor_vel(actual_chain_enabled_joints[i], motor_vel.at(actual_joint_name)))  {
                 printf("ERROR: get_chain_motor_vel() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1076,7 +931,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_motor_vel(std::string chain_name, std::
 
 bool gazebo::GazeboXBotPlugin::get_chain_motor_vel(std::string chain_name, std::map< int, int16_t >& motor_vel)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1095,12 +950,12 @@ bool gazebo::GazeboXBotPlugin::get_chain_motor_vel(std::string chain_name, std::
 
 bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map< std::string, float >& torque)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             torque[actual_joint_name] = 0;
             if( !get_torque(actual_chain_enabled_joints[i], torque.at(actual_joint_name)))  {
                 printf("ERROR: get_chain_torque() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1116,7 +971,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map
 
 bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map< int, float >& torque)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1135,12 +990,12 @@ bool gazebo::GazeboXBotPlugin::get_chain_torque(std::string chain_name, std::map
 
 bool gazebo::GazeboXBotPlugin::get_chain_temperature(std::string chain_name, std::map< std::string, uint16_t >& temperature)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             temperature[actual_joint_name] = 0;
             if( !get_temperature(actual_chain_enabled_joints[i], temperature.at(actual_joint_name)))  {
                 printf("ERROR: get_chain_temperature() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1156,7 +1011,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_temperature(std::string chain_name, std
 
 bool gazebo::GazeboXBotPlugin::get_chain_temperature(std::string chain_name, std::map< int, uint16_t >& temperature)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1175,12 +1030,12 @@ bool gazebo::GazeboXBotPlugin::get_chain_temperature(std::string chain_name, std
 
 bool gazebo::GazeboXBotPlugin::get_chain_fault(std::string chain_name, std::map< std::string, uint16_t >& fault)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             fault[actual_joint_name] = 0;
             if( !get_fault(actual_chain_enabled_joints[i], fault.at(actual_joint_name)))  {
                 printf("ERROR: get_chain_fault() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1196,7 +1051,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_fault(std::string chain_name, std::map<
 
 bool gazebo::GazeboXBotPlugin::get_chain_fault(std::string chain_name, std::map< int, uint16_t >& fault)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1215,12 +1070,12 @@ bool gazebo::GazeboXBotPlugin::get_chain_fault(std::string chain_name, std::map<
 
 bool gazebo::GazeboXBotPlugin::get_chain_rtt(std::string chain_name, std::map< std::string, uint16_t >& rtt)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             rtt[actual_joint_name] = 0;
             if( !get_rtt(actual_chain_enabled_joints[i], rtt.at(actual_joint_name)))  {
                 printf("ERROR: get_chain_rtt() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1236,7 +1091,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_rtt(std::string chain_name, std::map< s
 
 bool gazebo::GazeboXBotPlugin::get_chain_rtt(std::string chain_name, std::map< int, uint16_t >& rtt)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1255,12 +1110,12 @@ bool gazebo::GazeboXBotPlugin::get_chain_rtt(std::string chain_name, std::map< i
 
 bool gazebo::GazeboXBotPlugin::get_chain_op_idx_ack(std::string chain_name, std::map< std::string, uint16_t >& op_idx_ack)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             op_idx_ack[actual_joint_name] = 0;
             if( !get_op_idx_ack(actual_chain_enabled_joints[i], op_idx_ack.at(actual_joint_name)))  {
                 printf("ERROR: get_chain_op_idx_ack() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1276,7 +1131,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_op_idx_ack(std::string chain_name, std:
 
 bool gazebo::GazeboXBotPlugin::get_chain_op_idx_ack(std::string chain_name, std::map< int, uint16_t >& op_idx_ack)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1295,12 +1150,12 @@ bool gazebo::GazeboXBotPlugin::get_chain_op_idx_ack(std::string chain_name, std:
 
 bool gazebo::GazeboXBotPlugin::get_chain_aux(std::string chain_name, std::map< std::string, float >& aux)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             aux[actual_joint_name] = 0;
             if( !get_aux(actual_chain_enabled_joints[i], aux.at(actual_joint_name)))  {
                 printf("ERROR: get_chain_aux() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1316,7 +1171,7 @@ bool gazebo::GazeboXBotPlugin::get_chain_aux(std::string chain_name, std::map< s
 
 bool gazebo::GazeboXBotPlugin::get_chain_aux(std::string chain_name, std::map< int, float >& aux)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1338,12 +1193,12 @@ bool gazebo::GazeboXBotPlugin::get_chain_aux(std::string chain_name, std::map< i
 
 bool gazebo::GazeboXBotPlugin::set_chain_pos_ref(std::string chain_name, const std::map< std::string, float >& pos_ref)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             if(pos_ref.count(actual_joint_name)) {
                 if( !set_pos_ref(actual_chain_enabled_joints[i], pos_ref.at(actual_joint_name)))  {
                     printf("ERROR: set_pos_ref() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1360,7 +1215,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_pos_ref(std::string chain_name, const s
 
 bool gazebo::GazeboXBotPlugin::set_chain_pos_ref(std::string chain_name, const std::map< int, float >& pos_ref)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1380,12 +1235,12 @@ bool gazebo::GazeboXBotPlugin::set_chain_pos_ref(std::string chain_name, const s
 
 bool gazebo::GazeboXBotPlugin::set_chain_vel_ref(std::string chain_name, const std::map< std::string, int16_t >& vel_ref)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             if(vel_ref.count(actual_joint_name)) {
                 if( !set_vel_ref(actual_chain_enabled_joints[i], vel_ref.at(actual_joint_name)))  {
                     printf("ERROR: set_vel_ref() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1402,7 +1257,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_vel_ref(std::string chain_name, const s
 
 bool gazebo::GazeboXBotPlugin::set_chain_vel_ref(std::string chain_name, const std::map< int, int16_t >& vel_ref)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1422,12 +1277,12 @@ bool gazebo::GazeboXBotPlugin::set_chain_vel_ref(std::string chain_name, const s
 
 bool gazebo::GazeboXBotPlugin::set_chain_tor_ref(std::string chain_name, const std::map< std::string, int16_t >& tor_ref)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             if(tor_ref.count(actual_joint_name)) {
                 if( !set_tor_ref(actual_chain_enabled_joints[i], tor_ref.at(actual_joint_name)))  {
                     printf("ERROR: set_tor_ref() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1444,7 +1299,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_tor_ref(std::string chain_name, const s
 
 bool gazebo::GazeboXBotPlugin::set_chain_tor_ref(std::string chain_name, const std::map< int, int16_t >& tor_ref)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1464,12 +1319,12 @@ bool gazebo::GazeboXBotPlugin::set_chain_tor_ref(std::string chain_name, const s
 
 bool gazebo::GazeboXBotPlugin::set_chain_gains(std::string chain_name, const std::map< std::string, std::vector<uint16_t> >& gains)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             if(gains.count(actual_joint_name)) {
                 if( !set_gains(actual_chain_enabled_joints[i], gains.at(actual_joint_name)))  {
                     printf("ERROR: set_chain_gains() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1486,7 +1341,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_gains(std::string chain_name, const std
 
 bool gazebo::GazeboXBotPlugin::set_chain_gains(std::string chain_name, const std::map< int, std::vector<uint16_t> >& gains)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1506,12 +1361,12 @@ bool gazebo::GazeboXBotPlugin::set_chain_gains(std::string chain_name, const std
 
 bool gazebo::GazeboXBotPlugin::set_chain_fault_ack(std::string chain_name, const std::map< std::string, int16_t >& fault_ack)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             if(fault_ack.count(actual_joint_name)) {
                 if( !set_fault_ack(actual_chain_enabled_joints[i], fault_ack.at(actual_joint_name)))  {
                     printf("ERROR: set_fault_ack() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1528,7 +1383,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_fault_ack(std::string chain_name, const
 
 bool gazebo::GazeboXBotPlugin::set_chain_fault_ack(std::string chain_name, const std::map< int, int16_t >& fault_ack)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1548,12 +1403,12 @@ bool gazebo::GazeboXBotPlugin::set_chain_fault_ack(std::string chain_name, const
 
 bool gazebo::GazeboXBotPlugin::set_chain_ts(std::string chain_name, const std::map< std::string, uint16_t >& ts)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             if(ts.count(actual_joint_name)) {
                 if( !set_ts(actual_chain_enabled_joints[i], ts.at(actual_joint_name)))  {
                     printf("ERROR: set_ts() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1570,7 +1425,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_ts(std::string chain_name, const std::m
 
 bool gazebo::GazeboXBotPlugin::set_chain_ts(std::string chain_name, const std::map< int, uint16_t >& ts)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1590,12 +1445,12 @@ bool gazebo::GazeboXBotPlugin::set_chain_ts(std::string chain_name, const std::m
 
 bool gazebo::GazeboXBotPlugin::set_chain_op_idx_aux(std::string chain_name, const std::map< std::string, uint16_t >& op_idx_aux)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             if(op_idx_aux.count(actual_joint_name)) {
                 if( !set_op_idx_aux(actual_chain_enabled_joints[i], op_idx_aux.at(actual_joint_name)))  {
                     printf("ERROR: set_op_idx_aux() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1612,7 +1467,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_op_idx_aux(std::string chain_name, cons
 
 bool gazebo::GazeboXBotPlugin::set_chain_op_idx_aux(std::string chain_name, const std::map< int, uint16_t >& op_idx_aux)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
@@ -1632,12 +1487,12 @@ bool gazebo::GazeboXBotPlugin::set_chain_op_idx_aux(std::string chain_name, cons
 
 bool gazebo::GazeboXBotPlugin::set_chain_aux(std::string chain_name, const std::map< std::string, float >& aux)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         std::string actual_joint_name;
         for( int i = 0; i < enabled_joints_num; i++) {
-            actual_joint_name = _XBotModel.rid2Joint(actual_chain_enabled_joints[i]);
+            actual_joint_name = _robot->getJointByID(actual_chain_enabled_joints[i])->getJointName();
             if(aux.count(actual_joint_name)) {
                 if( !set_aux(actual_chain_enabled_joints[i], aux.at(actual_joint_name)))  {
                     printf("ERROR: set_aux() on joint %s, that does not exits in the chain %s\n", actual_joint_name.c_str(), chain_name.c_str());
@@ -1654,7 +1509,7 @@ bool gazebo::GazeboXBotPlugin::set_chain_aux(std::string chain_name, const std::
 
 bool gazebo::GazeboXBotPlugin::set_chain_aux(std::string chain_name, const std::map< int, float >& aux)
 {
-    if( _XBotRobot.count(chain_name) ) {
+    if( _robot->hasChain(chain_name) ) {
         std::vector<int> actual_chain_enabled_joints = _XBotRobot.at(chain_name);
         int enabled_joints_num = actual_chain_enabled_joints.size();
         for( int i = 0; i < enabled_joints_num; i++) {
