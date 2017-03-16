@@ -41,9 +41,9 @@ namespace gazebo
 {
 class GazeboXBotPlugin : 
     public ModelPlugin,
-    public XBot::IXBotJoint,
-    public XBot::IXBotChain,
-    public XBot::IXBotRobot
+    public XBot::IXBotJoint
+//     public XBot::IXBotChain,
+//     public XBot::IXBotRobot
 
 {
 
@@ -85,117 +85,117 @@ public :
 
 protected:
 
-    // NOTE IXBotRobot getters
-    virtual bool get_robot_link_pos(std::map<std::string, float>& link_pos) final;
-    virtual bool get_robot_link_pos(std::map<int, float>& link_pos) final;
-
-    virtual bool get_robot_motor_pos(std::map<std::string, float>& motor_pos) final;
-    virtual bool get_robot_motor_pos(std::map<int, float>& motor_pos) final;
-
-    virtual bool get_robot_link_vel(std::map<std::string, int16_t>& link_vel) final;
-    virtual bool get_robot_link_vel(std::map<int, int16_t>& link_vel) final;
-
-    virtual bool get_robot_motor_vel(std::map<std::string, int16_t>& motor_vel) final;
-    virtual bool get_robot_motor_vel(std::map<int, int16_t>& motor_vel) final;
-
-    virtual bool get_robot_torque(std::map<std::string, float>& torque) final;
-    virtual bool get_robot_torque(std::map<int, float>& torque) final;
-
-    virtual bool get_robot_temperature(std::map<int, uint16_t>& temperature) final;
-    virtual bool get_robot_temperature(std::map<std::string, uint16_t>& temperature) final;
-
-    virtual bool get_robot_fault(std::map<int, uint16_t>& fault) final;
-    virtual bool get_robot_fault(std::map<std::string, uint16_t>& fault) final;
-
-    virtual bool get_robot_rtt(std::map<int, uint16_t>& rtt) final;
-    virtual bool get_robot_rtt(std::map<std::string, uint16_t>& rtt) final;
-
-    virtual bool get_robot_op_idx_ack(std::map<int, uint16_t>& op_idx_ack) final;
-    virtual bool get_robot_op_idx_ack(std::map<std::string, uint16_t>& op_idx_ack) final;
-
-    virtual bool get_robot_aux(std::map<std::string, float>& aux) final;
-    virtual bool get_robot_aux(std::map<int, float>& aux) final;
-
-    // NOTE IXBotRobot setters
-    virtual bool set_robot_pos_ref(const std::map<std::string, float>& pos_ref) final;
-    virtual bool set_robot_pos_ref(const std::map<int, float>& pos_ref) final;
-
-    virtual bool set_robot_vel_ref(const std::map<std::string, int16_t>& vel_ref) final;
-    virtual bool set_robot_vel_ref(const std::map<int, int16_t>& vel_ref) final;
-
-    virtual bool set_robot_tor_ref(const std::map<std::string, int16_t>& tor_ref) final;
-    virtual bool set_robot_tor_ref(const std::map<int, int16_t>& tor_ref) final;
-
-    virtual bool set_robot_gains(const std::map<std::string, std::vector<uint16_t> >& gains) final;
-    virtual bool set_robot_gains(const std::map<int, std::vector<uint16_t> >& gains) final;
-
-    virtual bool set_robot_fault_ack(const std::map<std::string, int16_t>& fault_ack) final;
-    virtual bool set_robot_fault_ack(const std::map<int, int16_t>& fault_ack) final;
-
-    virtual bool set_robot_ts(const std::map<int, uint16_t>& ts) final;
-    virtual bool set_robot_ts(const std::map<std::string, uint16_t>& ts) final;
-
-    virtual bool set_robot_op_idx_aux(const std::map<int, uint16_t>& op_idx_aux) final;
-    virtual bool set_robot_op_idx_aux(const std::map<std::string, uint16_t>& op_idx_aux) final;
-
-    virtual bool set_robot_aux(const std::map<std::string, float>& aux) final;
-    virtual bool set_robot_aux(const std::map<int, float>& aux) final;
-
-    // NOTE IXBotChain getters
-    virtual bool get_chain_link_pos(std::string chain_name, std::map<std::string, float>& link_pos) final;
-    virtual bool get_chain_link_pos(std::string chain_name, std::map<int, float>& link_pos) final;
-
-    virtual bool get_chain_motor_pos(std::string chain_name, std::map<std::string, float>& motor_pos) final;
-    virtual bool get_chain_motor_pos(std::string chain_name, std::map<int, float>& motor_pos) final;
-
-    virtual bool get_chain_link_vel(std::string chain_name, std::map<std::string, int16_t>& link_vel) final;
-    virtual bool get_chain_link_vel(std::string chain_name, std::map<int, int16_t>& link_vel) final;
-
-    virtual bool get_chain_motor_vel(std::string chain_name, std::map<std::string, int16_t>& motor_vel) final;
-    virtual bool get_chain_motor_vel(std::string chain_name, std::map<int, int16_t>& motor_vel) final;
-
-    virtual bool get_chain_torque(std::string chain_name, std::map<std::string, float>& torque) final;
-    virtual bool get_chain_torque(std::string chain_name, std::map<int, float>& torque) final;
-
-    virtual bool get_chain_temperature(std::string chain_name, std::map<int, uint16_t>& temperature) final;
-    virtual bool get_chain_temperature(std::string chain_name, std::map<std::string, uint16_t>& temperature) final;
-
-    virtual bool get_chain_fault(std::string chain_name, std::map<int, uint16_t>& fault) final;
-    virtual bool get_chain_fault(std::string chain_name, std::map<std::string, uint16_t>& fault) final;
-
-    virtual bool get_chain_rtt(std::string chain_name, std::map<int, uint16_t>& rtt) final;
-    virtual bool get_chain_rtt(std::string chain_name, std::map<std::string, uint16_t>& rtt) final;
-
-    virtual bool get_chain_op_idx_ack(std::string chain_name, std::map<int, uint16_t>& op_idx_ack) final;
-    virtual bool get_chain_op_idx_ack(std::string chain_name, std::map<std::string, uint16_t>& op_idx_ack) final;
-
-    virtual bool get_chain_aux(std::string chain_name, std::map<std::string, float>& aux) final;
-    virtual bool get_chain_aux(std::string chain_name, std::map<int, float>& aux) final;
-
-    // NOTE IXBotChain setters
-    virtual bool set_chain_pos_ref(std::string chain_name, const std::map<std::string, float>& pos_ref) final;
-    virtual bool set_chain_pos_ref(std::string chain_name, const std::map<int, float>& pos_ref) final;
-
-    virtual bool set_chain_vel_ref(std::string chain_name, const std::map<std::string, int16_t>& vel_ref) final;
-    virtual bool set_chain_vel_ref(std::string chain_name, const std::map<int, int16_t>& vel_ref) final;
-
-    virtual bool set_chain_tor_ref(std::string chain_name, const std::map<std::string, int16_t>& tor_ref) final;
-    virtual bool set_chain_tor_ref(std::string chain_name, const std::map<int, int16_t>& tor_ref) final;
-
-    virtual bool set_chain_gains(std::string chain_name, const std::map<std::string, std::vector<uint16_t> >& gains) final;
-    virtual bool set_chain_gains(std::string chain_name, const std::map<int, std::vector<uint16_t> >& gains) final;
-
-    virtual bool set_chain_fault_ack(std::string chain_name, const std::map<std::string, int16_t>& fault_ack) final;
-    virtual bool set_chain_fault_ack(std::string chain_name, const std::map<int, int16_t>& fault_ack) final;
-
-    virtual bool set_chain_ts(std::string chain_name, const std::map<int, uint16_t>& ts) final;
-    virtual bool set_chain_ts(std::string chain_name, const std::map<std::string, uint16_t>& ts) final;
-
-    virtual bool set_chain_op_idx_aux(std::string chain_name, const std::map<int, uint16_t>& op_idx_aux) final;
-    virtual bool set_chain_op_idx_aux(std::string chain_name, const std::map<std::string, uint16_t>& op_idx_aux) final;
-
-    virtual bool set_chain_aux(std::string chain_name, const std::map<std::string, float>& aux) final;
-    virtual bool set_chain_aux(std::string chain_name, const std::map<int, float>& aux) final;
+//     // NOTE IXBotRobot getters
+//     virtual bool get_robot_link_pos(std::map<std::string, float>& link_pos) final;
+//     virtual bool get_robot_link_pos(std::map<int, float>& link_pos) final;
+// 
+//     virtual bool get_robot_motor_pos(std::map<std::string, float>& motor_pos) final;
+//     virtual bool get_robot_motor_pos(std::map<int, float>& motor_pos) final;
+// 
+//     virtual bool get_robot_link_vel(std::map<std::string, int16_t>& link_vel) final;
+//     virtual bool get_robot_link_vel(std::map<int, int16_t>& link_vel) final;
+// 
+//     virtual bool get_robot_motor_vel(std::map<std::string, int16_t>& motor_vel) final;
+//     virtual bool get_robot_motor_vel(std::map<int, int16_t>& motor_vel) final;
+// 
+//     virtual bool get_robot_torque(std::map<std::string, float>& torque) final;
+//     virtual bool get_robot_torque(std::map<int, float>& torque) final;
+// 
+//     virtual bool get_robot_temperature(std::map<int, uint16_t>& temperature) final;
+//     virtual bool get_robot_temperature(std::map<std::string, uint16_t>& temperature) final;
+// 
+//     virtual bool get_robot_fault(std::map<int, uint16_t>& fault) final;
+//     virtual bool get_robot_fault(std::map<std::string, uint16_t>& fault) final;
+// 
+//     virtual bool get_robot_rtt(std::map<int, uint16_t>& rtt) final;
+//     virtual bool get_robot_rtt(std::map<std::string, uint16_t>& rtt) final;
+// 
+//     virtual bool get_robot_op_idx_ack(std::map<int, uint16_t>& op_idx_ack) final;
+//     virtual bool get_robot_op_idx_ack(std::map<std::string, uint16_t>& op_idx_ack) final;
+// 
+//     virtual bool get_robot_aux(std::map<std::string, float>& aux) final;
+//     virtual bool get_robot_aux(std::map<int, float>& aux) final;
+// 
+//     // NOTE IXBotRobot setters
+//     virtual bool set_robot_pos_ref(const std::map<std::string, float>& pos_ref) final;
+//     virtual bool set_robot_pos_ref(const std::map<int, float>& pos_ref) final;
+// 
+//     virtual bool set_robot_vel_ref(const std::map<std::string, int16_t>& vel_ref) final;
+//     virtual bool set_robot_vel_ref(const std::map<int, int16_t>& vel_ref) final;
+// 
+//     virtual bool set_robot_tor_ref(const std::map<std::string, int16_t>& tor_ref) final;
+//     virtual bool set_robot_tor_ref(const std::map<int, int16_t>& tor_ref) final;
+// 
+//     virtual bool set_robot_gains(const std::map<std::string, std::vector<uint16_t> >& gains) final;
+//     virtual bool set_robot_gains(const std::map<int, std::vector<uint16_t> >& gains) final;
+// 
+//     virtual bool set_robot_fault_ack(const std::map<std::string, int16_t>& fault_ack) final;
+//     virtual bool set_robot_fault_ack(const std::map<int, int16_t>& fault_ack) final;
+// 
+//     virtual bool set_robot_ts(const std::map<int, uint16_t>& ts) final;
+//     virtual bool set_robot_ts(const std::map<std::string, uint16_t>& ts) final;
+// 
+//     virtual bool set_robot_op_idx_aux(const std::map<int, uint16_t>& op_idx_aux) final;
+//     virtual bool set_robot_op_idx_aux(const std::map<std::string, uint16_t>& op_idx_aux) final;
+// 
+//     virtual bool set_robot_aux(const std::map<std::string, float>& aux) final;
+//     virtual bool set_robot_aux(const std::map<int, float>& aux) final;
+// 
+//     // NOTE IXBotChain getters
+//     virtual bool get_chain_link_pos(std::string chain_name, std::map<std::string, float>& link_pos) final;
+//     virtual bool get_chain_link_pos(std::string chain_name, std::map<int, float>& link_pos) final;
+// 
+//     virtual bool get_chain_motor_pos(std::string chain_name, std::map<std::string, float>& motor_pos) final;
+//     virtual bool get_chain_motor_pos(std::string chain_name, std::map<int, float>& motor_pos) final;
+// 
+//     virtual bool get_chain_link_vel(std::string chain_name, std::map<std::string, int16_t>& link_vel) final;
+//     virtual bool get_chain_link_vel(std::string chain_name, std::map<int, int16_t>& link_vel) final;
+// 
+//     virtual bool get_chain_motor_vel(std::string chain_name, std::map<std::string, int16_t>& motor_vel) final;
+//     virtual bool get_chain_motor_vel(std::string chain_name, std::map<int, int16_t>& motor_vel) final;
+// 
+//     virtual bool get_chain_torque(std::string chain_name, std::map<std::string, float>& torque) final;
+//     virtual bool get_chain_torque(std::string chain_name, std::map<int, float>& torque) final;
+// 
+//     virtual bool get_chain_temperature(std::string chain_name, std::map<int, uint16_t>& temperature) final;
+//     virtual bool get_chain_temperature(std::string chain_name, std::map<std::string, uint16_t>& temperature) final;
+// 
+//     virtual bool get_chain_fault(std::string chain_name, std::map<int, uint16_t>& fault) final;
+//     virtual bool get_chain_fault(std::string chain_name, std::map<std::string, uint16_t>& fault) final;
+// 
+//     virtual bool get_chain_rtt(std::string chain_name, std::map<int, uint16_t>& rtt) final;
+//     virtual bool get_chain_rtt(std::string chain_name, std::map<std::string, uint16_t>& rtt) final;
+// 
+//     virtual bool get_chain_op_idx_ack(std::string chain_name, std::map<int, uint16_t>& op_idx_ack) final;
+//     virtual bool get_chain_op_idx_ack(std::string chain_name, std::map<std::string, uint16_t>& op_idx_ack) final;
+// 
+//     virtual bool get_chain_aux(std::string chain_name, std::map<std::string, float>& aux) final;
+//     virtual bool get_chain_aux(std::string chain_name, std::map<int, float>& aux) final;
+// 
+//     // NOTE IXBotChain setters
+//     virtual bool set_chain_pos_ref(std::string chain_name, const std::map<std::string, float>& pos_ref) final;
+//     virtual bool set_chain_pos_ref(std::string chain_name, const std::map<int, float>& pos_ref) final;
+// 
+//     virtual bool set_chain_vel_ref(std::string chain_name, const std::map<std::string, int16_t>& vel_ref) final;
+//     virtual bool set_chain_vel_ref(std::string chain_name, const std::map<int, int16_t>& vel_ref) final;
+// 
+//     virtual bool set_chain_tor_ref(std::string chain_name, const std::map<std::string, int16_t>& tor_ref) final;
+//     virtual bool set_chain_tor_ref(std::string chain_name, const std::map<int, int16_t>& tor_ref) final;
+// 
+//     virtual bool set_chain_gains(std::string chain_name, const std::map<std::string, std::vector<uint16_t> >& gains) final;
+//     virtual bool set_chain_gains(std::string chain_name, const std::map<int, std::vector<uint16_t> >& gains) final;
+// 
+//     virtual bool set_chain_fault_ack(std::string chain_name, const std::map<std::string, int16_t>& fault_ack) final;
+//     virtual bool set_chain_fault_ack(std::string chain_name, const std::map<int, int16_t>& fault_ack) final;
+// 
+//     virtual bool set_chain_ts(std::string chain_name, const std::map<int, uint16_t>& ts) final;
+//     virtual bool set_chain_ts(std::string chain_name, const std::map<std::string, uint16_t>& ts) final;
+// 
+//     virtual bool set_chain_op_idx_aux(std::string chain_name, const std::map<int, uint16_t>& op_idx_aux) final;
+//     virtual bool set_chain_op_idx_aux(std::string chain_name, const std::map<std::string, uint16_t>& op_idx_aux) final;
+// 
+//     virtual bool set_chain_aux(std::string chain_name, const std::map<std::string, float>& aux) final;
+//     virtual bool set_chain_aux(std::string chain_name, const std::map<int, float>& aux) final;
 
 private:
 
@@ -248,44 +248,44 @@ private:
     sdf::ElementPtr _sdf;
 
     // NOTE IXBotJoint getters
-    virtual bool get_link_pos(int joint_id, float& link_pos) final;
+    virtual bool get_link_pos(int joint_id, double& link_pos) final;
 
-    virtual bool get_motor_pos(int joint_id, float& motor_pos) final;
+    virtual bool get_motor_pos(int joint_id, double& motor_pos) final;
 
-    virtual bool get_link_vel(int joint_id, int16_t& link_vel) final;
+    virtual bool get_link_vel(int joint_id, double& link_vel) final;
 
-    virtual bool get_motor_vel(int joint_id, int16_t& motor_vel) final;
+    virtual bool get_motor_vel(int joint_id, double& motor_vel) final;
 
-    virtual bool get_torque(int joint_id, float& torque) final;
+    virtual bool get_torque(int joint_id, double& torque) final;
 
-    virtual bool get_temperature(int joint_id, uint16_t& temperature) final;
+    virtual bool get_temperature(int joint_id, double& temperature) final;
 
-    virtual bool get_gains(int joint_id, std::vector<uint16_t>& gain_vector) final;
+    virtual bool get_gains(int joint_id, std::vector<double>& gain_vector) final;
 
-    virtual bool get_fault(int joint_id, uint16_t& fault) final;
+    virtual bool get_fault(int joint_id, double& fault) final;
 
-    virtual bool get_rtt(int joint_id, uint16_t& rtt) final;
+    virtual bool get_rtt(int joint_id, double& rtt) final;
 
-    virtual bool get_op_idx_ack(int joint_id, uint16_t& op_idx_ack) final;
+    virtual bool get_op_idx_ack(int joint_id, double& op_idx_ack) final;
 
-    virtual bool get_aux(int joint_id, float& aux) final;
+    virtual bool get_aux(int joint_id, double& aux) final;
 
     // NOTE IXBotJoint setters
-    virtual bool set_pos_ref(int joint_id, const float& pos_ref) final;
+    virtual bool set_pos_ref(int joint_id, const double& pos_ref) final;
 
-    virtual bool set_vel_ref(int joint_id, const int16_t& vel_ref) final;
+    virtual bool set_vel_ref(int joint_id, const double& vel_ref) final;
 
-    virtual bool set_tor_ref(int joint_id, const int16_t& tor_ref) final;
+    virtual bool set_tor_ref(int joint_id, const double& tor_ref) final;
 
-    virtual bool set_gains(int joint_id, const std::vector<uint16_t>& gains) final;
+    virtual bool set_gains(int joint_id, const std::vector<double>& gains) final;
 
-    virtual bool set_fault_ack(int joint_id, const int16_t& fault_ack) final;
+    virtual bool set_fault_ack(int joint_id, const double& fault_ack) final;
 
-    virtual bool set_ts(int joint_id, const uint16_t& ts) final;
+    virtual bool set_ts(int joint_id, const double& ts) final;
 
-    virtual bool set_op_idx_aux(int joint_id, const uint16_t& op_idx_aux) final;
+    virtual bool set_op_idx_aux(int joint_id, const double& op_idx_aux) final;
 
-    virtual bool set_aux(int joint_id, const float& aux) final;
+    virtual bool set_aux(int joint_id, const double& aux) final;
 
 
 };
