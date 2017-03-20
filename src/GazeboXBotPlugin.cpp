@@ -459,7 +459,7 @@ bool gazebo::GazeboXBotPlugin::set_tor_ref ( int joint_id, const int16_t& tor_re
     auto it = _joint_controller_map.find(current_joint_name);
 
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
-        it->second->setTorqueReference(double(tor_ref) / 50); // NOTE torque scaling random but suitable to avoid the int16t overflow
+        it->second->setTorqueReference(double(tor_ref) / 100); // NOTE torque scaling random but suitable to avoid the int16t overflow
         return true;
     }
 
