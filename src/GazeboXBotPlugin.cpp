@@ -145,8 +145,8 @@ bool gazebo::GazeboXBotPlugin::loadPlugins()
 
 bool gazebo::GazeboXBotPlugin::initPlugins()
 {
-
-    return _pluginHandler->init_plugins();
+    std::shared_ptr<XBot::IXBotJoint> xbot_joint(this);
+    return _pluginHandler->init_plugins(xbot_joint);
 }
 
 void gazebo::GazeboXBotPlugin::close_all()
