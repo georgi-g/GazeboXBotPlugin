@@ -58,6 +58,8 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     std::cout << "GazeboXBotPlugin Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)" << std::endl;
 //     int a;
 //     std::cin >> a;
+    
+    
 
     // Store the pointer to the model
     _model = _parent;
@@ -83,10 +85,14 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     
     // create robot from config file and any map
     XBot::AnyMapPtr anymap = std::make_shared<XBot::AnyMap>();
-    std::shared_ptr<XBot::IXBotJoint> xbot_joint(this);
+    std::cout << __LINE__ << std::endl;
+    std::shared_ptr<XBot::IXBotJoint> xbot_joint(this, [](XBot::IXBotJoint* p){});
+    std::cout << __LINE__ << std::endl;
     (*anymap)["XBotJoint"] = boost::any(xbot_joint);
+    std::cout << __LINE__ << std::endl;
     
     _robot = XBot::RobotInterface::getRobot(_path_to_config, anymap, "XBotRT");
+    std::cout << __LINE__ << std::endl;
     
     // create time provider function
     boost::function<double()> time_func = boost::bind(&gazebo::GazeboXBotPlugin::get_time, this);
@@ -220,7 +226,7 @@ bool gazebo::GazeboXBotPlugin::get_link_vel ( int joint_id, double& link_vel )
     auto it = _jointMap.find(current_joint_name);
 
     if(current_joint_name != "" && it != _jointMap.end()) {
-        link_vel = (it->second)->GetVelocity(0)*1000.;
+        link_vel = (it->second)->GetVelocity(0);
         return true;
     }
     else {
@@ -278,7 +284,7 @@ bool gazebo::GazeboXBotPlugin::get_motor_vel ( int joint_id, double& motor_vel )
     auto it = _jointMap.find(current_joint_name);
 
     if(current_joint_name != "" && it != _jointMap.end()) {
-        motor_vel = (it->second)->GetVelocity(0)*1000.;
+        motor_vel = (it->second)->GetVelocity(0);
         // NOTE we return false because we are reading the link position form gazebo TBD a plugin should simulate this
         return false;
     }
@@ -315,6 +321,48 @@ bool gazebo::GazeboXBotPlugin::get_torque ( int joint_id, double& torque )
         return false;
     }
 }
+
+bool gazebo::GazeboXBotPlugin::get_pos_ref(int joint_id, double& pos_ref)
+{
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
+    auto it = _joint_controller_map.find(current_joint_name);
+
+    if(current_joint_name != "" && it != _joint_controller_map.end()) {
+        pos_ref = it->second->getPositionReference();
+        return true;
+    }
+
+    return false;
+}
+
+
+bool gazebo::GazeboXBotPlugin::get_vel_ref(int joint_id, double& vel_ref)
+{
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
+    auto it = _joint_controller_map.find(current_joint_name);
+
+    if(current_joint_name != "" && it != _joint_controller_map.end()) {
+        vel_ref = it->second->getVelocityReference();
+        return true;
+    }
+
+    return false;
+}
+
+
+bool gazebo::GazeboXBotPlugin::get_tor_ref(int joint_id, double& tor_ref)
+{
+    std::string current_joint_name = _robot->getJointByID(joint_id)->getJointName();
+    auto it = _joint_controller_map.find(current_joint_name);
+
+    if(current_joint_name != "" && it != _joint_controller_map.end()) {
+        tor_ref = it->second->getTorqueReference();
+        return true;
+    }
+
+    return false;
+}
+
 
 bool gazebo::GazeboXBotPlugin::set_aux ( int joint_id, const double& aux )
 {
@@ -368,7 +416,7 @@ bool gazebo::GazeboXBotPlugin::set_tor_ref ( int joint_id, const double& tor_ref
     auto it = _joint_controller_map.find(current_joint_name);
 
     if(current_joint_name != "" && it != _joint_controller_map.end()) {
-        it->second->setTorqueReference(double(tor_ref) / 100); // NOTE torque scaling random but suitable to avoid the int16t overflow
+        it->second->setTorqueReference(double(tor_ref)); // NOTE torque scaling random but suitable to avoid the int16t overflow
         return true;
     }
 

@@ -155,6 +155,12 @@ private:
     virtual bool get_op_idx_ack(int joint_id, double& op_idx_ack) final;
 
     virtual bool get_aux(int joint_id, double& aux) final;
+    
+    virtual bool get_pos_ref(int joint_id, double& pos_ref) final;
+
+    virtual bool get_vel_ref(int joint_id, double& vel_ref) final;
+
+    virtual bool get_tor_ref(int joint_id, double& tor_ref) final;
 
     // NOTE IXBotJoint setters
     virtual bool set_pos_ref(int joint_id, const double& pos_ref) final;
