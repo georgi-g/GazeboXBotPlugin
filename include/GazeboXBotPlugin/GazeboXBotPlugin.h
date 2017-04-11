@@ -39,7 +39,7 @@
 
 namespace gazebo
 {
-class GazeboXBotPlugin : 
+class GazeboXBotPlugin :
     public ModelPlugin,
     public XBot::IXBotJoint
 
@@ -108,6 +108,12 @@ private:
     // xbot plugin handler
     XBot::PluginHandler::Ptr _pluginHandler;
 
+    // control rate
+    double _control_rate;
+    
+    // previous iteration time (for keeping 1kHz control rate)
+    double _previous_time;
+
     // robot map
     std::map<std::string, std::vector<int>> _XBotRobot;
 
@@ -155,7 +161,7 @@ private:
     virtual bool get_op_idx_ack(int joint_id, double& op_idx_ack) final;
 
     virtual bool get_aux(int joint_id, double& aux) final;
-    
+
     virtual bool get_pos_ref(int joint_id, double& pos_ref) final;
 
     virtual bool get_vel_ref(int joint_id, double& vel_ref) final;

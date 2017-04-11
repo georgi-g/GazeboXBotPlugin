@@ -58,8 +58,8 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     std::cout << "GazeboXBotPlugin Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)" << std::endl;
 //     int a;
 //     std::cin >> a;
-    
-    
+
+
 
     // Store the pointer to the model
     _model = _parent;
@@ -82,7 +82,9 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 
     // compute path
     computeAbsolutePath(_path_to_config, "/", _path_to_config);
-    
+
+    YAML::Node root = YAML::LoadFile(_path_to_config);
+
     // create robot from config file and any map
     XBot::AnyMapPtr anymap = std::make_shared<XBot::AnyMap>();
     std::cout << __LINE__ << std::endl;
@@ -90,18 +92,18 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     std::cout << __LINE__ << std::endl;
     (*anymap)["XBotJoint"] = boost::any(xbot_joint);
     std::cout << __LINE__ << std::endl;
-    
+
     _robot = XBot::RobotInterface::getRobot(_path_to_config, anymap, "XBotRT");
     std::cout << __LINE__ << std::endl;
-    
+
     // create time provider function
     boost::function<double()> time_func = boost::bind(&gazebo::GazeboXBotPlugin::get_time, this);
     // create time provider
     auto time_provider = std::make_shared<XBot::TimeProviderFunction<boost::function<double()>>>(time_func);
-    
+
     // create plugin handler
     _pluginHandler = std::make_shared<XBot::PluginHandler>(_robot, time_provider);
-    
+
     // iterate over Gazebo model Joint vector and store Joint pointers in a map
     const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
     for (unsigned int gazebo_joint = 0; gazebo_joint < gazebo_models_joints.size(); gazebo_joint++) {
@@ -116,11 +118,28 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         _joint_controller_map[gazebo_joint_name] =
             std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
 
-        _joint_controller_map.at(gazebo_joint_name)->setGains(1000, 0, 1);
+            double p_gain = 300;
+            double d_gain = 1;
+
+        if( root["GazeboXBotPlugin"]["gains"][gazebo_joint_name] ){
+            p_gain = root["GazeboXBotPlugin"]["gains"][gazebo_joint_name]["p"].as<double>();
+            d_gain = root["GazeboXBotPlugin"]["gains"][gazebo_joint_name]["d"].as<double>();
+        }
+
+
+        _joint_controller_map.at(gazebo_joint_name)->setGains(p_gain, 0, d_gain);
+
         _joint_controller_map.at(gazebo_joint_name)->enableFeedforward();
 
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
 
+    }
+
+    if(root["GazeboXBotPlugin"]["control_rate"]){
+        _control_rate = root["GazeboXBotPlugin"]["control_rate"].as<double>();
+    }
+    else{
+        _control_rate = 0.001;
     }
 
 }
@@ -138,6 +157,9 @@ void gazebo::GazeboXBotPlugin::Init()
 
     // Init plugins
     initPlugins();
+
+    // Set _previous_time
+    _previous_time = get_time();
 
     std::cout << "GazeboXBotPlugin Init() completed" << std::endl;
 
@@ -158,7 +180,7 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
 void gazebo::GazeboXBotPlugin::close_all()
 {
     std::cout << "void gazebo::GazeboXBotPlugin::close_all()" << std::endl;
-    
+
     _pluginHandler->close();
 
 }
@@ -177,8 +199,13 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
         close_all();
         exit(1);
     }
-    
-    _pluginHandler->run();
+
+    if( (get_time() - _previous_time) >= (_control_rate * 0.999) ){
+
+        _pluginHandler->run();
+        _previous_time = get_time();
+
+    }
 
     for( auto& pair : _joint_controller_map ){
         pair.second->sendControlInput();
