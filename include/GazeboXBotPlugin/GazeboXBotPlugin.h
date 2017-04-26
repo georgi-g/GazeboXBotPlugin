@@ -26,6 +26,8 @@
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
+#include <gazebo/transport/transport.hh>
+#include <gazebo/sensors/ImuSensor.hh>
 
 #include <XBotCore-interfaces/All.h>
 
@@ -34,14 +36,14 @@
 #include <XCM/XBotPluginHandler.h>
 
 #include <GazeboXBotPlugin/JointController.h>
-
+#include <GazeboXBotPlugin/CallbackHelper.h>
 
 
 namespace gazebo
 {
 class GazeboXBotPlugin :
     public ModelPlugin,
-    public XBot::IXBotJoint
+    public XBot::IXBotJoint, public XBot::IXBotIMU
 
 {
 
@@ -95,6 +97,8 @@ private:
 
     bool loadPlugins();
 
+    bool loadImuSensors();
+
     bool initPlugins();
 
     void close_all();
@@ -110,7 +114,7 @@ private:
 
     // control rate
     double _control_rate;
-    
+
     // previous iteration time (for keeping 1kHz control rate)
     double _previous_time;
 
@@ -138,6 +142,22 @@ private:
 
     // pointer to sdf
     sdf::ElementPtr _sdf;
+
+    // gazebo transport node
+    gazebo::transport::NodePtr _node;
+
+    // imu callback helpers
+    std::map<int, gazebo::CallbackHelper<msgs::IMU>> _imu_msg_map;
+
+    // imu subscribers
+    std::map<int, gazebo::transport::SubscriberPtr> _imu_sub_map;
+
+    // ft callback helpers
+    std::map<int, gazebo::CallbackHelper<msgs::ForceTorque>> _imu_msg_map;
+
+    // ft subscribers
+    std::map<int, gazebo::transport::SubscriberPtr> _ft_sub_map;
+
 
     // NOTE IXBotJoint getters
     virtual bool get_link_pos(int joint_id, double& link_pos) final;
@@ -184,6 +204,14 @@ private:
     virtual bool set_op_idx_aux(int joint_id, const double& op_idx_aux) final;
 
     virtual bool set_aux(int joint_id, const double& aux) final;
+
+    virtual bool get_imu(int imu_id, std::vector< double >& lin_acc,
+                         std::vector< double >& ang_vel,
+                         std::vector< double >& quaternion) final;
+
+    virtual bool get_imu_fault(int imu_id, double& fault) final;
+
+    virtual bool get_imu_rtt(int imu_id, double& rtt) final;
 
 
 };

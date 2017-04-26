@@ -22,6 +22,7 @@
 #include <csignal>
 
 #include <boost/function.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <XCM/TimeProvider.h>
 
@@ -60,12 +61,15 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 //     std::cin >> a;
 
 
-
     // Store the pointer to the model
     _model = _parent;
 
     // Get a handle to the world
     _world = _model->GetWorld();
+
+    // Get node
+    _node.reset(new transport::Node());
+    _node->Init();
 
     // Listen to the update event. This event is broadcast every simulation iteration
     _updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&GazeboXBotPlugin::XBotUpdate, this, _1));
@@ -87,14 +91,12 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 
     // create robot from config file and any map
     XBot::AnyMapPtr anymap = std::make_shared<XBot::AnyMap>();
-    std::cout << __LINE__ << std::endl;
     std::shared_ptr<XBot::IXBotJoint> xbot_joint(this, [](XBot::IXBotJoint* p){});
-    std::cout << __LINE__ << std::endl;
+    std::shared_ptr<XBot::IXBotIMU> xbot_imu(this, [](XBot::IXBotIMU* p){});
     (*anymap)["XBotJoint"] = boost::any(xbot_joint);
-    std::cout << __LINE__ << std::endl;
+    (*anymap)["XBotIMU"] = boost::any(xbot_imu);
 
     _robot = XBot::RobotInterface::getRobot(_path_to_config, anymap, "XBotRT");
-    std::cout << __LINE__ << std::endl;
 
     // create time provider function
     boost::function<double()> time_func = boost::bind(&gazebo::GazeboXBotPlugin::get_time, this);
@@ -142,9 +144,35 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         _control_rate = 0.001;
     }
 
+    loadImuSensors();
+
 }
 
 
+bool gazebo::GazeboXBotPlugin::loadImuSensors()
+{
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
+    for( const auto& imu_pair : _robot->getImu() ){
+
+        if(!imu_pair.second){
+            std::cout << "ERROR! NULLPTR!!!" << std::endl;
+            continue;
+        }
+
+        const XBot::ImuSensor& imu = *imu_pair.second;
+        int imu_id = imu.getSensorId();
+        std::string topic_name = "~/" + _model->GetLink(imu.getParentLinkName())->GetScopedName() + "/" + imu.getSensorName() + "/imu";
+
+        std::cout << topic_name << std::endl;
+        boost::replace_all(topic_name, "::", "/");
+        _imu_msg_map[imu_id] = CallbackHelper<msgs::IMU>();
+        _imu_sub_map[imu_id] = _node->Subscribe(topic_name,
+                                                &CallbackHelper<msgs::IMU>::callback,
+                                                &_imu_msg_map[imu_id]);
+
+    }
+}
 
 
 void gazebo::GazeboXBotPlugin::Init()
@@ -194,6 +222,8 @@ double gazebo::GazeboXBotPlugin::get_time()
 
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
+//     std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     if( g_loop_ok == 0 ){
         std::cout << "CTRL+C detected..." << std::endl;
         close_all();
@@ -470,6 +500,74 @@ bool gazebo::GazeboXBotPlugin::set_vel_ref ( int joint_id, const double& vel_ref
 
     return false;
 
+}
+
+bool gazebo::GazeboXBotPlugin::get_imu(int imu_id,
+                                       std::vector< double >& lin_acc,
+                                       std::vector< double >& ang_vel,
+                                       std::vector< double >& quaternion)
+{
+
+    auto it = _imu_msg_map.find(imu_id);
+
+    lin_acc.assign(3, 0.0);
+    ang_vel.assign(3, 0.0);
+    quaternion.assign(4, 0.0);
+    quaternion[3] = 1.0;
+
+    if(it == _imu_msg_map.end()){
+        lin_acc.assign(3, 0.0);
+        ang_vel.assign(3, 0.0);
+        quaternion.assign(4, 0.0);
+        quaternion[3] = 1.0;
+
+        return false;
+    }
+
+    const auto& msg = it->second.getLastMessage();
+
+    lin_acc[0] = msg.linear_acceleration().x();
+    lin_acc[1] = msg.linear_acceleration().y();
+    lin_acc[2] = msg.linear_acceleration().z();
+
+    ang_vel[0] = msg.angular_velocity().x();
+    ang_vel[1] = msg.angular_velocity().y();
+    ang_vel[2] = msg.angular_velocity().z();
+
+    quaternion[0] = msg.orientation().x();
+    quaternion[2] = msg.orientation().y();
+    quaternion[3] = msg.orientation().z();
+    quaternion[4] = msg.orientation().w();
+
+    return true;
+
+
+}
+
+bool gazebo::GazeboXBotPlugin::get_imu_fault(int imu_id, double& fault)
+{
+    auto imu_ptr = _robot->getImu(imu_id);
+
+    if(!imu_ptr){
+        fault = 0;
+        return false;
+    }
+
+    fault = 0;
+    return true;
+}
+
+bool gazebo::GazeboXBotPlugin::get_imu_rtt(int imu_id, double& rtt)
+{
+    auto imu_ptr = _robot->getImu(imu_id);
+
+    if(!imu_ptr){
+        rtt = 0;
+        return false;
+    }
+
+    rtt = 0;
+    return true;
 }
 
 
