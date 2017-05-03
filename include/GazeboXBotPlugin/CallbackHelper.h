@@ -34,7 +34,12 @@ public:
     }
 
     void callback(const boost::shared_ptr<const MsgType>& msg){
-        _last_msg = *msg;
+        if(msg) {
+            _last_msg = *msg;
+        }
+        else {
+            std::cout << "F**K Gazebo " << std::endl;
+        }
     }
 
 private:

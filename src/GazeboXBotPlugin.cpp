@@ -160,7 +160,7 @@ bool gazebo::GazeboXBotPlugin::loadFTSensors()
 {
     std::cout << __PRETTY_FUNCTION__ << std::endl;
     bool ret = true;
-    std::cout << "Loading FT sensors ... " << std::endl;
+    std::cout << "Loading F-T sensors ... " << std::endl;
 
     for( const auto& FT_pair : _robot->getForceTorque() ){
 
@@ -178,12 +178,14 @@ bool gazebo::GazeboXBotPlugin::loadFTSensors()
             continue;
         }
         else {
-            std::string topic_name = "~/" + link_ptr->GetScopedName() + "/" + ft.getSensorName() + "/ft";  
-            std::cout << "F-T found : " << topic_name << std::endl;
+            std::string topic_name = "~/" + link_ptr->GetParentJoints().at(0)->GetScopedName() + "/" + ft.getSensorName() + "/wrench";  
             boost::replace_all(topic_name, "::", "/");
-            _ft_msg_map[ft_id] = CallbackHelper<msgs::ForceTorque>();
+            
+            std::cout << "F-T found : " << topic_name << std::endl;
+            
+            _ft_msg_map[ft_id] = CallbackHelper<msgs::WrenchStamped>();
             _ft_sub_map[ft_id] = _node->Subscribe( topic_name,
-                                                    &CallbackHelper<msgs::ForceTorque>::callback,
+                                                    &CallbackHelper<msgs::WrenchStamped>::callback,
                                                     &_ft_msg_map[ft_id]);
         }
     }
@@ -214,9 +216,10 @@ bool gazebo::GazeboXBotPlugin::loadImuSensors()
         }
         else {
             std::string topic_name = "~/" + link_ptr->GetScopedName() + "/" + imu.getSensorName() + "/imu";
-
-            std::cout << "IMU found : " << topic_name << std::endl;
             boost::replace_all(topic_name, "::", "/");
+            
+            std::cout << "IMU found : " << topic_name << std::endl;
+            
             _imu_msg_map[imu_id] = CallbackHelper<msgs::IMU>();
             _imu_sub_map[imu_id] = _node->Subscribe(topic_name,
                                                     &CallbackHelper<msgs::IMU>::callback,
@@ -636,13 +639,18 @@ bool gazebo::GazeboXBotPlugin::get_ft(int ft_id, std::vector< double >& ft, int 
 
     const auto& msg = it->second.getLastMessage();
     
-    ft[0] = msg.wrench(0).body_1_wrench().force().x();
-    ft[1] = msg.wrench(0).body_1_wrench().force().y();
-    ft[2] = msg.wrench(0).body_1_wrench().force().z();
-    ft[3] = msg.wrench(0).body_1_wrench().torque().x();
-    ft[4] = msg.wrench(0).body_1_wrench().torque().y();
-    ft[5] = msg.wrench(0).body_1_wrench().torque().z();
+//     if(msg.wrench().size() > 0) {
+        
+        ft[0] = msg.wrench().force().x();
+        ft[1] = msg.wrench().force().y();
+        ft[2] = msg.wrench().force().z();
+        ft[3] = msg.wrench().torque().x();
+        ft[4] = msg.wrench().torque().y();
+        ft[5] = msg.wrench().torque().z();
+        
+        std::cout << " FT : " << ft[0] << "\t" << ft[1] << "\t" << ft[2] << "\t" << std::endl;
 
+//     }
 
     return true;
 }

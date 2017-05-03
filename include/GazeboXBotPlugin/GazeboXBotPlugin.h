@@ -157,7 +157,7 @@ private:
     std::map<int, gazebo::transport::SubscriberPtr> _imu_sub_map;
 
     // ft callback helpers
-    std::map<int, gazebo::CallbackHelper<msgs::ForceTorque>> _ft_msg_map;
+    std::map<int, gazebo::CallbackHelper<msgs::WrenchStamped>> _ft_msg_map;
 
     // ft subscribers
     std::map<int, gazebo::transport::SubscriberPtr> _ft_sub_map;
