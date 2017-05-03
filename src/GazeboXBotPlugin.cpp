@@ -92,8 +92,10 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     // create robot from config file and any map
     XBot::AnyMapPtr anymap = std::make_shared<XBot::AnyMap>();
     std::shared_ptr<XBot::IXBotJoint> xbot_joint(this, [](XBot::IXBotJoint* p){});
+    std::shared_ptr<XBot::IXBotFT> xbot_ft(this, [](XBot::IXBotFT* p){});
     std::shared_ptr<XBot::IXBotIMU> xbot_imu(this, [](XBot::IXBotIMU* p){});
     (*anymap)["XBotJoint"] = boost::any(xbot_joint);
+    (*anymap)["XBotFT"] = boost::any(xbot_ft);
     (*anymap)["XBotIMU"] = boost::any(xbot_imu);
 
     _robot = XBot::RobotInterface::getRobot(_path_to_config, anymap, "XBotRT");
@@ -137,21 +139,63 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 
     }
 
+    // set the control rate
     if(root["GazeboXBotPlugin"]["control_rate"]){
         _control_rate = root["GazeboXBotPlugin"]["control_rate"].as<double>();
     }
     else{
+        // defaulte control rate at 1ms
         _control_rate = 0.001;
     }
+    
+    // load FT sensors
+    loadFTSensors();
 
+    // load IMU sensors
     loadImuSensors();
 
 }
 
+bool gazebo::GazeboXBotPlugin::loadFTSensors()
+{
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+    bool ret = true;
+    std::cout << "Loading FT sensors ... " << std::endl;
+
+    for( const auto& FT_pair : _robot->getForceTorque() ){
+
+        if(!FT_pair.second){
+            std::cout << "ERROR! NULLPTR!!!" << std::endl;
+            continue;
+        }
+
+        const XBot::ForceTorqueSensor& ft = *FT_pair.second;
+        int ft_id = ft.getSensorId();
+        gazebo::physics::LinkPtr link_ptr =  _model->GetLink(ft.getParentLinkName());
+        if( !link_ptr) {
+            std::cout << "Error : " << ft.getParentLinkName() << " does not name a link in currnet Gazebo model." << std::endl;
+            ret = false;
+            continue;
+        }
+        else {
+            std::string topic_name = "~/" + link_ptr->GetScopedName() + "/" + ft.getSensorName() + "/ft";  
+            std::cout << "F-T found : " << topic_name << std::endl;
+            boost::replace_all(topic_name, "::", "/");
+            _ft_msg_map[ft_id] = CallbackHelper<msgs::ForceTorque>();
+            _ft_sub_map[ft_id] = _node->Subscribe( topic_name,
+                                                    &CallbackHelper<msgs::ForceTorque>::callback,
+                                                    &_ft_msg_map[ft_id]);
+        }
+    }
+    
+    return ret;
+}
 
 bool gazebo::GazeboXBotPlugin::loadImuSensors()
 {
     std::cout << __PRETTY_FUNCTION__ << std::endl;
+    bool ret = true;
+    std::cout << "Loading IMU sensors ... " << std::endl;
 
     for( const auto& imu_pair : _robot->getImu() ){
 
@@ -162,14 +206,22 @@ bool gazebo::GazeboXBotPlugin::loadImuSensors()
 
         const XBot::ImuSensor& imu = *imu_pair.second;
         int imu_id = imu.getSensorId();
-        std::string topic_name = "~/" + _model->GetLink(imu.getParentLinkName())->GetScopedName() + "/" + imu.getSensorName() + "/imu";
+        gazebo::physics::LinkPtr link_ptr =  _model->GetLink(imu.getParentLinkName());
+        if( !link_ptr) {
+            std::cout << "Error : " << imu.getParentLinkName() << " does not name a link in currnet Gazebo model." << std::endl;
+            ret = false;
+            continue;
+        }
+        else {
+            std::string topic_name = "~/" + link_ptr->GetScopedName() + "/" + imu.getSensorName() + "/imu";
 
-        std::cout << topic_name << std::endl;
-        boost::replace_all(topic_name, "::", "/");
-        _imu_msg_map[imu_id] = CallbackHelper<msgs::IMU>();
-        _imu_sub_map[imu_id] = _node->Subscribe(topic_name,
-                                                &CallbackHelper<msgs::IMU>::callback,
-                                                &_imu_msg_map[imu_id]);
+            std::cout << "IMU found : " << topic_name << std::endl;
+            boost::replace_all(topic_name, "::", "/");
+            _imu_msg_map[imu_id] = CallbackHelper<msgs::IMU>();
+            _imu_sub_map[imu_id] = _node->Subscribe(topic_name,
+                                                    &CallbackHelper<msgs::IMU>::callback,
+                                                    &_imu_msg_map[imu_id]);
+        }
 
     }
 }
@@ -562,6 +614,57 @@ bool gazebo::GazeboXBotPlugin::get_imu_rtt(int imu_id, double& rtt)
     auto imu_ptr = _robot->getImu(imu_id);
 
     if(!imu_ptr){
+        rtt = 0;
+        return false;
+    }
+
+    rtt = 0;
+    return true;
+}
+
+
+bool gazebo::GazeboXBotPlugin::get_ft(int ft_id, std::vector< double >& ft, int channels)
+{
+    auto it = _ft_msg_map.find(ft_id);
+
+    ft.assign(channels, 0.0);
+
+    if(it == _ft_msg_map.end()){
+        ft.assign(channels, 0.0);
+        return false;
+    }
+
+    const auto& msg = it->second.getLastMessage();
+    
+    ft[0] = msg.wrench(0).body_1_wrench().force().x();
+    ft[1] = msg.wrench(0).body_1_wrench().force().y();
+    ft[2] = msg.wrench(0).body_1_wrench().force().z();
+    ft[3] = msg.wrench(0).body_1_wrench().torque().x();
+    ft[4] = msg.wrench(0).body_1_wrench().torque().y();
+    ft[5] = msg.wrench(0).body_1_wrench().torque().z();
+
+
+    return true;
+}
+
+bool gazebo::GazeboXBotPlugin::get_ft_fault(int ft_id, double& fault)
+{
+    auto ft_ptr = _robot->getForceTorque(ft_id);
+
+    if(!ft_ptr){
+        fault = 0;
+        return false;
+    }
+
+    fault = 0;
+    return true;
+}
+
+bool gazebo::GazeboXBotPlugin::get_ft_rtt(int ft_id, double& rtt)
+{
+    auto ft_ptr = _robot->getForceTorque(ft_id);
+
+    if(!ft_ptr){
         rtt = 0;
         return false;
     }

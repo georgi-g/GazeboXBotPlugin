@@ -43,7 +43,9 @@ namespace gazebo
 {
 class GazeboXBotPlugin :
     public ModelPlugin,
-    public XBot::IXBotJoint, public XBot::IXBotIMU
+    public XBot::IXBotJoint, 
+    public XBot::IXBotIMU,
+    public XBot::IXBotFT
 
 {
 
@@ -96,6 +98,8 @@ private:
                                     std::string& absolute_path);  // TBD do it with UTILS
 
     bool loadPlugins();
+    
+    bool loadFTSensors();
 
     bool loadImuSensors();
 
@@ -205,6 +209,16 @@ private:
 
     virtual bool set_aux(int joint_id, const double& aux) final;
 
+    // NOTE IXBotFT
+    
+    virtual bool get_ft(int ft_id, std::vector< double >& ft, int channels = 6) final;
+
+    virtual bool get_ft_fault(int ft_id, double& fault) final;
+
+    virtual bool get_ft_rtt(int ft_id, double& rtt) final;
+    
+    
+    // NOTE IXBotIMU 
     virtual bool get_imu(int imu_id, std::vector< double >& lin_acc,
                          std::vector< double >& ang_vel,
                          std::vector< double >& quaternion) final;
