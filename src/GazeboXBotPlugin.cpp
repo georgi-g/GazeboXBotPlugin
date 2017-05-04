@@ -154,11 +154,17 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     
     // if multiple robot are simulated we need to get only the sensors attached to our robot
     for(unsigned int i = 0; i < _sensors.size(); ++i) {
-        if(_sensors[i]->GetScopedName().find("::"+_model->GetName()+"::") != std::string::npos) {
-            
+        #if GAZEBO_MAJOR_VERSION <= 6
+        if(_sensors[i]->GetScopedName().find("::"+_model->GetName()+"::") != std::string::npos) { 
             _sensors_attached_to_robot.push_back(_sensors[i]);
             std::cout << _sensors_attached_to_robot[i]->GetScopedName() << std::endl;
         }
+        #else 
+        if(_sensors[i]->ScopedName().find("::"+_model->Name()+"::") != std::string::npos) { 
+            _sensors_attached_to_robot.push_back(_sensors[i]);
+            std::cout << _sensors_attached_to_robot[i]->ScopedName() << std::endl;
+        }
+        #endif
     }
 
     // load FT sensors
@@ -189,6 +195,7 @@ bool gazebo::GazeboXBotPlugin::loadFTSensors()
         std::string ft_name = ft.getSensorName();
 
         for(unsigned int i = 0; i < _sensors_attached_to_robot.size(); ++i) {
+            #if GAZEBO_MAJOR_VERSION <= 6
             // if the sensor is a FT and has the ft_name
             if( ( _sensors_attached_to_robot[i]->GetType().compare("force_torque") == 0 ) &&
                 ( _sensors_attached_to_robot[i]->GetName() == ft_name ) )
@@ -196,6 +203,14 @@ bool gazebo::GazeboXBotPlugin::loadFTSensors()
                 _ft_gazebo_map[ft_id] = boost::static_pointer_cast<gazebo::sensors::ForceTorqueSensor>(_sensors_attached_to_robot[i]); 
                 std::cout << "F-T found: " << _ft_gazebo_map.at(ft_id)->GetName() << std::endl;
             }
+            #else 
+            if( ( _sensors_attached_to_robot[i]->Type().compare("force_torque") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->Name() == ft_name ) )
+            {
+                _ft_gazebo_map[ft_id] = boost::static_pointer_cast<gazebo::sensors::ForceTorqueSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "F-T found: " << _ft_gazebo_map.at(ft_id)->Name() << std::endl;
+            }
+            #endif
 
         }
         
@@ -224,6 +239,7 @@ bool gazebo::GazeboXBotPlugin::loadImuSensors()
         std::string imu_name = imu.getSensorName();
 
         for(unsigned int i = 0; i < _sensors_attached_to_robot.size(); ++i) {
+            #if GAZEBO_MAJOR_VERSION <= 6
             // if the sensor is a IMU and has the ft_name
             if( ( _sensors_attached_to_robot[i]->GetType().compare("imu") == 0 ) &&
                 ( _sensors_attached_to_robot[i]->GetName() == imu_name ) )
@@ -231,6 +247,14 @@ bool gazebo::GazeboXBotPlugin::loadImuSensors()
                 _imu_gazebo_map[imu_id] = boost::static_pointer_cast<gazebo::sensors::ImuSensor>(_sensors_attached_to_robot[i]); 
                 std::cout << "IMU found: " << _imu_gazebo_map.at(imu_id)->GetName() << std::endl;
             }
+            #else 
+            if( ( _sensors_attached_to_robot[i]->Type().compare("imu") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->Name() == imu_name ) )
+            {
+                _imu_gazebo_map[imu_id] = boost::static_pointer_cast<gazebo::sensors::ImuSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "IMU found: " << _imu_gazebo_map.at(imu_id)->Name() << std::endl;
+            }
+            #endif
 
         }
         
