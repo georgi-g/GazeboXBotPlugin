@@ -31,6 +31,8 @@
 #include <GazeboXBotPlugin/DefaultGazeboPID.h>
 #include <GazeboXBotPlugin/JointImpedanceController.h>
 
+#include <gazebo/sensors/sensors.hh>
+
 
 sig_atomic_t g_loop_ok = 1;
 
@@ -115,10 +117,6 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
 
-//         _joint_controller_map[gazebo_joint_name] =
-//             std::make_shared<XBot::DefaultGazeboPID>( _model->GetJoint(gazebo_joint_name),
-//                                                       _model->GetJointController() );
-
         _joint_controller_map[gazebo_joint_name] =
             std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
 
@@ -148,6 +146,21 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         _control_rate = 0.001;
     }
     
+    // init and update sensors
+    gazebo::sensors::SensorManager::Instance()->Update(true);
+    
+    // get the list of sensors
+    _sensors = gazebo::sensors::SensorManager::Instance()->GetSensors();
+    
+    // if multiple robot are simulated we need to get only the sensors attached to our robot
+    for(unsigned int i = 0; i < _sensors.size(); ++i) {
+        if(_sensors[i]->GetScopedName().find("::"+_model->GetName()+"::") != std::string::npos) {
+            
+            _sensors_attached_to_robot.push_back(_sensors[i]);
+            std::cout << _sensors_attached_to_robot[i]->GetScopedName() << std::endl;
+        }
+    }
+
     // load FT sensors
     loadFTSensors();
 
@@ -161,35 +174,33 @@ bool gazebo::GazeboXBotPlugin::loadFTSensors()
     std::cout << __PRETTY_FUNCTION__ << std::endl;
     bool ret = true;
     std::cout << "Loading F-T sensors ... " << std::endl;
+    
+    for( const auto& FT_pair : _robot->getForceTorque() ) {
 
-    for( const auto& FT_pair : _robot->getForceTorque() ){
-
+        // check XBot FT ptr
         if(!FT_pair.second){
-            std::cout << "ERROR! NULLPTR!!!" << std::endl;
+            std::cout << "ERROR! FT NULLPTR!!!" << std::endl;
             continue;
         }
 
+        // get id and name of the FT sensor
         const XBot::ForceTorqueSensor& ft = *FT_pair.second;
         int ft_id = ft.getSensorId();
-        gazebo::physics::LinkPtr link_ptr =  _model->GetLink(ft.getParentLinkName());
-        if( !link_ptr) {
-            std::cout << "Error : " << ft.getParentLinkName() << " does not name a link in currnet Gazebo model." << std::endl;
-            ret = false;
-            continue;
+        std::string ft_name = ft.getSensorName();
+
+        for(unsigned int i = 0; i < _sensors_attached_to_robot.size(); ++i) {
+            // if the sensor is a FT and has the ft_name
+            if( ( _sensors_attached_to_robot[i]->GetType().compare("force_torque") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->GetName() == ft_name ) )
+            {
+                _ft_gazebo_map[ft_id] = boost::static_pointer_cast<gazebo::sensors::ForceTorqueSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "F-T found: " << _ft_gazebo_map.at(ft_id)->GetName() << std::endl;
+            }
+
         }
-        else {
-            std::string topic_name = "~/" + link_ptr->GetParentJoints().at(0)->GetScopedName() + "/" + ft.getSensorName() + "/wrench";  
-            boost::replace_all(topic_name, "::", "/");
-            
-            std::cout << "F-T found : " << topic_name << std::endl;
-            
-            _ft_msg_map[ft_id] = CallbackHelper<msgs::WrenchStamped>();
-            _ft_sub_map[ft_id] = _node->Subscribe( topic_name,
-                                                    &CallbackHelper<msgs::WrenchStamped>::callback,
-                                                    &_ft_msg_map[ft_id]);
-        }
+        
     }
-    
+
     return ret;
 }
 
@@ -198,35 +209,34 @@ bool gazebo::GazeboXBotPlugin::loadImuSensors()
     std::cout << __PRETTY_FUNCTION__ << std::endl;
     bool ret = true;
     std::cout << "Loading IMU sensors ... " << std::endl;
+    
+    for( const auto& imu_pair : _robot->getImu() ) {
 
-    for( const auto& imu_pair : _robot->getImu() ){
-
+        // check XBot FT ptr
         if(!imu_pair.second){
-            std::cout << "ERROR! NULLPTR!!!" << std::endl;
+            std::cout << "ERROR! imu NULLPTR!!!" << std::endl;
             continue;
         }
 
+        // get id and name of the FT sensor
         const XBot::ImuSensor& imu = *imu_pair.second;
         int imu_id = imu.getSensorId();
-        gazebo::physics::LinkPtr link_ptr =  _model->GetLink(imu.getParentLinkName());
-        if( !link_ptr) {
-            std::cout << "Error : " << imu.getParentLinkName() << " does not name a link in currnet Gazebo model." << std::endl;
-            ret = false;
-            continue;
-        }
-        else {
-            std::string topic_name = "~/" + link_ptr->GetScopedName() + "/" + imu.getSensorName() + "/imu";
-            boost::replace_all(topic_name, "::", "/");
-            
-            std::cout << "IMU found : " << topic_name << std::endl;
-            
-            _imu_msg_map[imu_id] = CallbackHelper<msgs::IMU>();
-            _imu_sub_map[imu_id] = _node->Subscribe(topic_name,
-                                                    &CallbackHelper<msgs::IMU>::callback,
-                                                    &_imu_msg_map[imu_id]);
-        }
+        std::string imu_name = imu.getSensorName();
 
+        for(unsigned int i = 0; i < _sensors_attached_to_robot.size(); ++i) {
+            // if the sensor is a IMU and has the ft_name
+            if( ( _sensors_attached_to_robot[i]->GetType().compare("imu") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->GetName() == imu_name ) )
+            {
+                _imu_gazebo_map[imu_id] = boost::static_pointer_cast<gazebo::sensors::ImuSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "IMU found: " << _imu_gazebo_map.at(imu_id)->GetName() << std::endl;
+            }
+
+        }
+        
     }
+    
+    return ret;
 }
 
 
@@ -563,14 +573,14 @@ bool gazebo::GazeboXBotPlugin::get_imu(int imu_id,
                                        std::vector< double >& quaternion)
 {
 
-    auto it = _imu_msg_map.find(imu_id);
+    auto imu_gazebo = _imu_gazebo_map.at(imu_id);
 
     lin_acc.assign(3, 0.0);
     ang_vel.assign(3, 0.0);
     quaternion.assign(4, 0.0);
     quaternion[3] = 1.0;
 
-    if(it == _imu_msg_map.end()){
+    if(!imu_gazebo){
         lin_acc.assign(3, 0.0);
         ang_vel.assign(3, 0.0);
         quaternion.assign(4, 0.0);
@@ -579,20 +589,19 @@ bool gazebo::GazeboXBotPlugin::get_imu(int imu_id,
         return false;
     }
 
-    const auto& msg = it->second.getLastMessage();
+    lin_acc[0] = imu_gazebo->GetLinearAcceleration().x;
+    lin_acc[1] = imu_gazebo->GetLinearAcceleration().y;
+    lin_acc[2] = imu_gazebo->GetLinearAcceleration().z;
 
-    lin_acc[0] = msg.linear_acceleration().x();
-    lin_acc[1] = msg.linear_acceleration().y();
-    lin_acc[2] = msg.linear_acceleration().z();
+    ang_vel[0] = imu_gazebo->GetAngularVelocity().x;
+    ang_vel[1] = imu_gazebo->GetAngularVelocity().y;
+    ang_vel[2] = imu_gazebo->GetAngularVelocity().z;
 
-    ang_vel[0] = msg.angular_velocity().x();
-    ang_vel[1] = msg.angular_velocity().y();
-    ang_vel[2] = msg.angular_velocity().z();
+    quaternion[0] = imu_gazebo->GetOrientation().x;
+    quaternion[2] = imu_gazebo->GetOrientation().y;
+    quaternion[3] = imu_gazebo->GetOrientation().z;
+    quaternion[4] = imu_gazebo->GetOrientation().w;
 
-    quaternion[0] = msg.orientation().x();
-    quaternion[2] = msg.orientation().y();
-    quaternion[3] = msg.orientation().z();
-    quaternion[4] = msg.orientation().w();
 
     return true;
 
@@ -628,29 +637,21 @@ bool gazebo::GazeboXBotPlugin::get_imu_rtt(int imu_id, double& rtt)
 
 bool gazebo::GazeboXBotPlugin::get_ft(int ft_id, std::vector< double >& ft, int channels)
 {
-    auto it = _ft_msg_map.find(ft_id);
+    auto ft_gazebo = _ft_gazebo_map.at(ft_id);
 
     ft.assign(channels, 0.0);
 
-    if(it == _ft_msg_map.end()){
+    if( !ft_gazebo ) {
         ft.assign(channels, 0.0);
         return false;
     }
 
-    const auto& msg = it->second.getLastMessage();
-    
-//     if(msg.wrench().size() > 0) {
-        
-        ft[0] = msg.wrench().force().x();
-        ft[1] = msg.wrench().force().y();
-        ft[2] = msg.wrench().force().z();
-        ft[3] = msg.wrench().torque().x();
-        ft[4] = msg.wrench().torque().y();
-        ft[5] = msg.wrench().torque().z();
-        
-        std::cout << " FT : " << ft[0] << "\t" << ft[1] << "\t" << ft[2] << "\t" << std::endl;
-
-//     }
+    ft[0] = ft_gazebo->Force().X();
+    ft[1] = ft_gazebo->Force().Y();
+    ft[2] = ft_gazebo->Force().Z();
+    ft[3] = ft_gazebo->Torque().X();
+    ft[4] = ft_gazebo->Torque().Y();
+    ft[5] = ft_gazebo->Torque().Z();
 
     return true;
 }

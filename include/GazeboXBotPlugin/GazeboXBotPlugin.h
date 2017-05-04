@@ -149,19 +149,17 @@ private:
 
     // gazebo transport node
     gazebo::transport::NodePtr _node;
-
+    
+    // gazebo sensors
+    gazebo::sensors::Sensor_V _sensors;
+    
+    // gazebo sensors attached to the current robot
+    gazebo::sensors::Sensor_V _sensors_attached_to_robot;
+    
     // imu callback helpers
-    std::map<int, gazebo::CallbackHelper<msgs::IMU>> _imu_msg_map;
-
-    // imu subscribers
-    std::map<int, gazebo::transport::SubscriberPtr> _imu_sub_map;
-
+    std::map<int, gazebo::sensors::ImuSensorPtr> _imu_gazebo_map;
     // ft callback helpers
-    std::map<int, gazebo::CallbackHelper<msgs::WrenchStamped>> _ft_msg_map;
-
-    // ft subscribers
-    std::map<int, gazebo::transport::SubscriberPtr> _ft_sub_map;
-
+    std::map<int, gazebo::sensors::ForceTorqueSensorPtr> _ft_gazebo_map;
 
     // NOTE IXBotJoint getters
     virtual bool get_link_pos(int joint_id, double& link_pos) final;
