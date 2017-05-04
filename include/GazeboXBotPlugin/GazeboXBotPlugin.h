@@ -26,6 +26,8 @@
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
+#include <gazebo/transport/transport.hh>
+#include <gazebo/sensors/ImuSensor.hh>
 
 #include <XBotCore-interfaces/All.h>
 
@@ -34,14 +36,16 @@
 #include <XCM/XBotPluginHandler.h>
 
 #include <GazeboXBotPlugin/JointController.h>
-
+#include <GazeboXBotPlugin/CallbackHelper.h>
 
 
 namespace gazebo
 {
 class GazeboXBotPlugin :
     public ModelPlugin,
-    public XBot::IXBotJoint
+    public XBot::IXBotJoint, 
+    public XBot::IXBotIMU,
+    public XBot::IXBotFT
 
 {
 
@@ -94,6 +98,10 @@ private:
                                     std::string& absolute_path);  // TBD do it with UTILS
 
     bool loadPlugins();
+    
+    bool loadFTSensors();
+
+    bool loadImuSensors();
 
     bool initPlugins();
 
@@ -110,7 +118,7 @@ private:
 
     // control rate
     double _control_rate;
-    
+
     // previous iteration time (for keeping 1kHz control rate)
     double _previous_time;
 
@@ -138,6 +146,20 @@ private:
 
     // pointer to sdf
     sdf::ElementPtr _sdf;
+
+    // gazebo transport node
+    gazebo::transport::NodePtr _node;
+    
+    // gazebo sensors
+    gazebo::sensors::Sensor_V _sensors;
+    
+    // gazebo sensors attached to the current robot
+    gazebo::sensors::Sensor_V _sensors_attached_to_robot;
+    
+    // imu callback helpers
+    std::map<int, gazebo::sensors::ImuSensorPtr> _imu_gazebo_map;
+    // ft callback helpers
+    std::map<int, gazebo::sensors::ForceTorqueSensorPtr> _ft_gazebo_map;
 
     // NOTE IXBotJoint getters
     virtual bool get_link_pos(int joint_id, double& link_pos) final;
@@ -184,6 +206,24 @@ private:
     virtual bool set_op_idx_aux(int joint_id, const double& op_idx_aux) final;
 
     virtual bool set_aux(int joint_id, const double& aux) final;
+
+    // NOTE IXBotFT
+    
+    virtual bool get_ft(int ft_id, std::vector< double >& ft, int channels = 6) final;
+
+    virtual bool get_ft_fault(int ft_id, double& fault) final;
+
+    virtual bool get_ft_rtt(int ft_id, double& rtt) final;
+    
+    
+    // NOTE IXBotIMU 
+    virtual bool get_imu(int imu_id, std::vector< double >& lin_acc,
+                         std::vector< double >& ang_vel,
+                         std::vector< double >& quaternion) final;
+
+    virtual bool get_imu_fault(int imu_id, double& fault) final;
+
+    virtual bool get_imu_rtt(int imu_id, double& rtt) final;
 
 
 };

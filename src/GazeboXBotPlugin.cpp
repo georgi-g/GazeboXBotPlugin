@@ -22,6 +22,7 @@
 #include <csignal>
 
 #include <boost/function.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <XCM/TimeProvider.h>
 
@@ -29,6 +30,8 @@
 
 #include <GazeboXBotPlugin/DefaultGazeboPID.h>
 #include <GazeboXBotPlugin/JointImpedanceController.h>
+
+#include <gazebo/sensors/sensors.hh>
 
 
 sig_atomic_t g_loop_ok = 1;
@@ -60,12 +63,15 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 //     std::cin >> a;
 
 
-
     // Store the pointer to the model
     _model = _parent;
 
     // Get a handle to the world
     _world = _model->GetWorld();
+
+    // Get node
+    _node.reset(new transport::Node());
+    _node->Init();
 
     // Listen to the update event. This event is broadcast every simulation iteration
     _updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&GazeboXBotPlugin::XBotUpdate, this, _1));
@@ -87,14 +93,14 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 
     // create robot from config file and any map
     XBot::AnyMapPtr anymap = std::make_shared<XBot::AnyMap>();
-    std::cout << __LINE__ << std::endl;
     std::shared_ptr<XBot::IXBotJoint> xbot_joint(this, [](XBot::IXBotJoint* p){});
-    std::cout << __LINE__ << std::endl;
+    std::shared_ptr<XBot::IXBotFT> xbot_ft(this, [](XBot::IXBotFT* p){});
+    std::shared_ptr<XBot::IXBotIMU> xbot_imu(this, [](XBot::IXBotIMU* p){});
     (*anymap)["XBotJoint"] = boost::any(xbot_joint);
-    std::cout << __LINE__ << std::endl;
+    (*anymap)["XBotFT"] = boost::any(xbot_ft);
+    (*anymap)["XBotIMU"] = boost::any(xbot_imu);
 
     _robot = XBot::RobotInterface::getRobot(_path_to_config, anymap, "XBotRT");
-    std::cout << __LINE__ << std::endl;
 
     // create time provider function
     boost::function<double()> time_func = boost::bind(&gazebo::GazeboXBotPlugin::get_time, this);
@@ -110,10 +116,6 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         std::string gazebo_joint_name = gazebo_models_joints[gazebo_joint]->GetName();
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
-
-//         _joint_controller_map[gazebo_joint_name] =
-//             std::make_shared<XBot::DefaultGazeboPID>( _model->GetJoint(gazebo_joint_name),
-//                                                       _model->GetJointController() );
 
         _joint_controller_map[gazebo_joint_name] =
             std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
@@ -135,16 +137,131 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 
     }
 
+    // set the control rate
     if(root["GazeboXBotPlugin"]["control_rate"]){
         _control_rate = root["GazeboXBotPlugin"]["control_rate"].as<double>();
     }
     else{
+        // defaulte control rate at 1ms
         _control_rate = 0.001;
     }
+    
+    // init and update sensors
+    gazebo::sensors::SensorManager::Instance()->Update(true);
+    
+    // get the list of sensors
+    _sensors = gazebo::sensors::SensorManager::Instance()->GetSensors();
+    
+    // if multiple robot are simulated we need to get only the sensors attached to our robot
+    for(unsigned int i = 0; i < _sensors.size(); ++i) {
+        #if GAZEBO_MAJOR_VERSION <= 6
+        if(_sensors[i]->GetScopedName().find("::"+_model->GetName()+"::") != std::string::npos) { 
+            _sensors_attached_to_robot.push_back(_sensors[i]);
+            std::cout << _sensors_attached_to_robot[i]->GetScopedName() << std::endl;
+        }
+        #else 
+        if(_sensors[i]->ScopedName().find("::"+_model->GetName()+"::") != std::string::npos) { 
+            _sensors_attached_to_robot.push_back(_sensors[i]);
+            std::cout << _sensors_attached_to_robot[i]->ScopedName() << std::endl;
+        }
+        #endif
+    }
+
+    // load FT sensors
+    loadFTSensors();
+
+    // load IMU sensors
+    loadImuSensors();
 
 }
 
+bool gazebo::GazeboXBotPlugin::loadFTSensors()
+{
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+    bool ret = true;
+    std::cout << "Loading F-T sensors ... " << std::endl;
+    
+    for( const auto& FT_pair : _robot->getForceTorque() ) {
 
+        // check XBot FT ptr
+        if(!FT_pair.second){
+            std::cout << "ERROR! FT NULLPTR!!!" << std::endl;
+            continue;
+        }
+
+        // get id and name of the FT sensor
+        const XBot::ForceTorqueSensor& ft = *FT_pair.second;
+        int ft_id = ft.getSensorId();
+        std::string ft_name = ft.getSensorName();
+
+        for(unsigned int i = 0; i < _sensors_attached_to_robot.size(); ++i) {
+            #if GAZEBO_MAJOR_VERSION <= 6
+            // if the sensor is a FT and has the ft_name
+            if( ( _sensors_attached_to_robot[i]->GetType().compare("force_torque") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->GetName() == ft_name ) )
+            {
+                _ft_gazebo_map[ft_id] = boost::static_pointer_cast<gazebo::sensors::ForceTorqueSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "F-T found: " << _ft_gazebo_map.at(ft_id)->GetName() << std::endl;
+            }
+            #else 
+            if( ( _sensors_attached_to_robot[i]->Type().compare("force_torque") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->Name() == ft_name ) )
+            {
+                _ft_gazebo_map[ft_id] = std::static_pointer_cast<gazebo::sensors::ForceTorqueSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "F-T found: " << _ft_gazebo_map.at(ft_id)->Name() << std::endl;
+            }
+            #endif
+
+        }
+        
+    }
+
+    return ret;
+}
+
+bool gazebo::GazeboXBotPlugin::loadImuSensors()
+{
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+    bool ret = true;
+    std::cout << "Loading IMU sensors ... " << std::endl;
+    
+    for( const auto& imu_pair : _robot->getImu() ) {
+
+        // check XBot FT ptr
+        if(!imu_pair.second){
+            std::cout << "ERROR! imu NULLPTR!!!" << std::endl;
+            continue;
+        }
+
+        // get id and name of the FT sensor
+        const XBot::ImuSensor& imu = *imu_pair.second;
+        int imu_id = imu.getSensorId();
+        std::string imu_name = imu.getSensorName();
+
+        for(unsigned int i = 0; i < _sensors_attached_to_robot.size(); ++i) {
+            #if GAZEBO_MAJOR_VERSION <= 6
+            // if the sensor is a IMU and has the ft_name
+            if( ( _sensors_attached_to_robot[i]->GetType().compare("imu") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->GetName() == imu_name ) )
+            {
+                _imu_gazebo_map[imu_id] = boost::static_pointer_cast<gazebo::sensors::ImuSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "IMU found: " << _imu_gazebo_map.at(imu_id)->GetName() << std::endl;
+            }
+            #else 
+            if( ( _sensors_attached_to_robot[i]->Type().compare("imu") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->Name() == imu_name ) )
+            {
+                _imu_gazebo_map[imu_id] = std::static_pointer_cast<gazebo::sensors::ImuSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "IMU found: " << _imu_gazebo_map.at(imu_id)->Name() << std::endl;
+            }
+            #endif
+
+        }
+        
+    }
+    
+    return ret;
+}
 
 
 void gazebo::GazeboXBotPlugin::Init()
@@ -194,6 +311,8 @@ double gazebo::GazeboXBotPlugin::get_time()
 
 void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 {
+//     std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     if( g_loop_ok == 0 ){
         std::cout << "CTRL+C detected..." << std::endl;
         close_all();
@@ -470,6 +589,121 @@ bool gazebo::GazeboXBotPlugin::set_vel_ref ( int joint_id, const double& vel_ref
 
     return false;
 
+}
+
+bool gazebo::GazeboXBotPlugin::get_imu(int imu_id,
+                                       std::vector< double >& lin_acc,
+                                       std::vector< double >& ang_vel,
+                                       std::vector< double >& quaternion)
+{
+
+    auto imu_gazebo = _imu_gazebo_map.at(imu_id);
+
+    lin_acc.assign(3, 0.0);
+    ang_vel.assign(3, 0.0);
+    quaternion.assign(4, 0.0);
+    quaternion[3] = 1.0;
+
+    if(!imu_gazebo){
+        lin_acc.assign(3, 0.0);
+        ang_vel.assign(3, 0.0);
+        quaternion.assign(4, 0.0);
+        quaternion[3] = 1.0;
+
+        return false;
+    }
+
+    lin_acc[0] = imu_gazebo->LinearAcceleration().X();
+    lin_acc[1] = imu_gazebo->LinearAcceleration().Y();
+    lin_acc[2] = imu_gazebo->LinearAcceleration().Z();
+
+    ang_vel[0] = imu_gazebo->AngularVelocity().X();
+    ang_vel[1] = imu_gazebo->AngularVelocity().Y();
+    ang_vel[2] = imu_gazebo->AngularVelocity().Z();
+
+    quaternion[0] = imu_gazebo->Orientation().X();
+    quaternion[2] = imu_gazebo->Orientation().Y();
+    quaternion[3] = imu_gazebo->Orientation().Z();
+    quaternion[4] = imu_gazebo->Orientation().W();
+
+
+    return true;
+
+
+}
+
+bool gazebo::GazeboXBotPlugin::get_imu_fault(int imu_id, double& fault)
+{
+    auto imu_ptr = _robot->getImu(imu_id);
+
+    if(!imu_ptr){
+        fault = 0;
+        return false;
+    }
+
+    fault = 0;
+    return true;
+}
+
+bool gazebo::GazeboXBotPlugin::get_imu_rtt(int imu_id, double& rtt)
+{
+    auto imu_ptr = _robot->getImu(imu_id);
+
+    if(!imu_ptr){
+        rtt = 0;
+        return false;
+    }
+
+    rtt = 0;
+    return true;
+}
+
+
+bool gazebo::GazeboXBotPlugin::get_ft(int ft_id, std::vector< double >& ft, int channels)
+{
+    auto ft_gazebo = _ft_gazebo_map.at(ft_id);
+
+    ft.assign(channels, 0.0);
+
+    if( !ft_gazebo ) {
+        ft.assign(channels, 0.0);
+        return false;
+    }
+
+    ft[0] = ft_gazebo->Force().X();
+    ft[1] = ft_gazebo->Force().Y();
+    ft[2] = ft_gazebo->Force().Z();
+    ft[3] = ft_gazebo->Torque().X();
+    ft[4] = ft_gazebo->Torque().Y();
+    ft[5] = ft_gazebo->Torque().Z();
+
+    return true;
+}
+
+bool gazebo::GazeboXBotPlugin::get_ft_fault(int ft_id, double& fault)
+{
+    auto ft_ptr = _robot->getForceTorque(ft_id);
+
+    if(!ft_ptr){
+        fault = 0;
+        return false;
+    }
+
+    fault = 0;
+    return true;
+}
+
+bool gazebo::GazeboXBotPlugin::get_ft_rtt(int ft_id, double& rtt)
+{
+    auto ft_ptr = _robot->getForceTorque(ft_id);
+
+    if(!ft_ptr){
+        rtt = 0;
+        return false;
+    }
+
+    rtt = 0;
+    return true;
 }
 
 
