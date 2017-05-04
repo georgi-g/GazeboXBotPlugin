@@ -589,18 +589,18 @@ bool gazebo::GazeboXBotPlugin::get_imu(int imu_id,
         return false;
     }
 
-    lin_acc[0] = imu_gazebo->GetLinearAcceleration().x;
-    lin_acc[1] = imu_gazebo->GetLinearAcceleration().y;
-    lin_acc[2] = imu_gazebo->GetLinearAcceleration().z;
+    lin_acc[0] = imu_gazebo->LinearAcceleration().X();
+    lin_acc[1] = imu_gazebo->LinearAcceleration().Y();
+    lin_acc[2] = imu_gazebo->LinearAcceleration().Z();
 
-    ang_vel[0] = imu_gazebo->GetAngularVelocity().x;
-    ang_vel[1] = imu_gazebo->GetAngularVelocity().y;
-    ang_vel[2] = imu_gazebo->GetAngularVelocity().z;
+    ang_vel[0] = imu_gazebo->AngularVelocity().X();
+    ang_vel[1] = imu_gazebo->AngularVelocity().Y();
+    ang_vel[2] = imu_gazebo->AngularVelocity().Z();
 
-    quaternion[0] = imu_gazebo->GetOrientation().x;
-    quaternion[2] = imu_gazebo->GetOrientation().y;
-    quaternion[3] = imu_gazebo->GetOrientation().z;
-    quaternion[4] = imu_gazebo->GetOrientation().w;
+    quaternion[0] = imu_gazebo->Orientation().X();
+    quaternion[2] = imu_gazebo->Orientation().Y();
+    quaternion[3] = imu_gazebo->Orientation().Z();
+    quaternion[4] = imu_gazebo->Orientation().W();
 
 
     return true;
