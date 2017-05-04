@@ -158,7 +158,7 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         if(_sensors[i]->GetScopedName().find("::"+_model->GetName()+"::") != std::string::npos) { 
             _sensors_attached_to_robot.push_back(_sensors[i]);
             std::cout << _sensors_attached_to_robot[i]->GetScopedName() << std::endl;
-        }Ge
+        }
         #else 
         if(_sensors[i]->ScopedName().find("::"+_model->GetName()+"::") != std::string::npos) { 
             _sensors_attached_to_robot.push_back(_sensors[i]);
