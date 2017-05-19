@@ -415,8 +415,8 @@ bool gazebo::GazeboXBotPlugin::get_motor_pos ( int joint_id, double& motor_pos )
 
     if(current_joint_name != "" && it != _jointMap.end()) {
         motor_pos = (it->second)->GetAngle(0).Radian();
-        // NOTE we return false because we are reading the link position form gazebo TBD a plugin should simulate this
-        return false;
+        // NOTE we return true but we are reading the link position from gazebo TBD a plugin should simulate this
+        return true;
     }
     else {
         motor_pos = 0;
@@ -431,8 +431,8 @@ bool gazebo::GazeboXBotPlugin::get_motor_vel ( int joint_id, double& motor_vel )
 
     if(current_joint_name != "" && it != _jointMap.end()) {
         motor_vel = (it->second)->GetVelocity(0);
-        // NOTE we return false because we are reading the link position form gazebo TBD a plugin should simulate this
-        return false;
+        // NOTE we return false but we are reading the link position drom gazebo TBD a plugin should simulate this
+        return true;
     }
     else {
         motor_vel = 0;
