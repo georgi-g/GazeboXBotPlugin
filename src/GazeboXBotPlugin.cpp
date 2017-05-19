@@ -622,11 +622,10 @@ bool gazebo::GazeboXBotPlugin::get_imu(int imu_id,
     ang_vel[2] = imu_gazebo->AngularVelocity().Z();
 
     quaternion[0] = imu_gazebo->Orientation().X();
-    quaternion[2] = imu_gazebo->Orientation().Y();
-    quaternion[3] = imu_gazebo->Orientation().Z();
-    quaternion[4] = imu_gazebo->Orientation().W();
-
-
+    quaternion[1] = imu_gazebo->Orientation().Y();
+    quaternion[2] = imu_gazebo->Orientation().Z();
+    quaternion[3] = imu_gazebo->Orientation().W();
+    
     return true;
 
 
