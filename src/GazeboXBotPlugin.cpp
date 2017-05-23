@@ -668,7 +668,15 @@ bool gazebo::GazeboXBotPlugin::get_imu_rtt(int imu_id, double& rtt)
 
 bool gazebo::GazeboXBotPlugin::get_ft(int ft_id, std::vector< double >& ft, int channels)
 {
-    auto ft_gazebo = _ft_gazebo_map.at(ft_id);
+    auto it =_ft_gazebo_map.find(ft_id);
+    // if ft is not found
+    if( it == _ft_gazebo_map.end() ) {
+        std::cout << "WARNING: FT with id : " << ft_id << " not found in the GAZEBO model you loaded: check you put the right urdf_path, srdf_path and joint_config_map in your YAML config file." << std::endl;
+        return false;
+    }
+
+    // imu found
+    auto ft_gazebo = it->second;
 
     ft.assign(channels, 0.0);
 
