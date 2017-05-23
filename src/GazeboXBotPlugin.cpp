@@ -597,8 +597,16 @@ bool gazebo::GazeboXBotPlugin::get_imu(int imu_id,
                                        std::vector< double >& quaternion)
 {
 
-    auto imu_gazebo = _imu_gazebo_map.at(imu_id);
+    auto it =_imu_gazebo_map.find(imu_id);
+    // if imu is not found
+    if( it == _imu_gazebo_map.end() ) {
+        std::cout << "WARNING: IMU with id : " << imu_id << " not found in the GAZEBO model you loaded: check you put the right urdf_path, srdf_path and joint_config_map in your YAML config file." << std::endl;
+        return false;
+    }
 
+    // imu found
+    auto imu_gazebo = it->second;
+    
     lin_acc.assign(3, 0.0);
     ang_vel.assign(3, 0.0);
     quaternion.assign(4, 0.0);
@@ -660,7 +668,15 @@ bool gazebo::GazeboXBotPlugin::get_imu_rtt(int imu_id, double& rtt)
 
 bool gazebo::GazeboXBotPlugin::get_ft(int ft_id, std::vector< double >& ft, int channels)
 {
-    auto ft_gazebo = _ft_gazebo_map.at(ft_id);
+    auto it =_ft_gazebo_map.find(ft_id);
+    // if ft is not found
+    if( it == _ft_gazebo_map.end() ) {
+        std::cout << "WARNING: FT with id : " << ft_id << " not found in the GAZEBO model you loaded: check you put the right urdf_path, srdf_path and joint_config_map in your YAML config file." << std::endl;
+        return false;
+    }
+
+    // imu found
+    auto ft_gazebo = it->second;
 
     ft.assign(channels, 0.0);
 
