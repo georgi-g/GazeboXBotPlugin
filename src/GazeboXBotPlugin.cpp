@@ -44,6 +44,7 @@ void sigint_handler(int s){
 gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 {
     std::cout << "GazeboXBotPlugin()" << std::endl;
+    _shared_memory = std::make_shared<XBot::SharedMemory>();
     signal(SIGINT, sigint_handler);
 
 }
@@ -285,13 +286,13 @@ void gazebo::GazeboXBotPlugin::Init()
 
 bool gazebo::GazeboXBotPlugin::loadPlugins()
 {
-    return _pluginHandler->load_plugins();
+    return _pluginHandler->load_plugins("XBotRTPlugins");
 }
 
 bool gazebo::GazeboXBotPlugin::initPlugins()
 {
     std::shared_ptr<XBot::IXBotJoint> xbot_joint(this);
-    return _pluginHandler->init_plugins(xbot_joint);
+    return _pluginHandler->init_plugins(_shared_memory, xbot_joint);
 }
 
 void gazebo::GazeboXBotPlugin::close_all()
