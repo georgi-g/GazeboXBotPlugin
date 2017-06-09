@@ -109,7 +109,7 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     auto time_provider = std::make_shared<XBot::TimeProviderFunction<boost::function<double()>>>(time_func);
 
     // create plugin handler
-    _pluginHandler = std::make_shared<XBot::PluginHandler>(_robot, time_provider);
+    _pluginHandler = std::make_shared<XBot::PluginHandler>(_robot, time_provider, "XBotRTPlugins");
 
     // iterate over Gazebo model Joint vector and store Joint pointers in a map
     const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
@@ -286,7 +286,7 @@ void gazebo::GazeboXBotPlugin::Init()
 
 bool gazebo::GazeboXBotPlugin::loadPlugins()
 {
-    return _pluginHandler->load_plugins("XBotRTPlugins");
+    return _pluginHandler->load_plugins();
 }
 
 bool gazebo::GazeboXBotPlugin::initPlugins()
