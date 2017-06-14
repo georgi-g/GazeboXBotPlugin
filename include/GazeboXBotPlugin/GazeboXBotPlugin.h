@@ -115,6 +115,9 @@ private:
 
     // xbot plugin handler
     XBot::PluginHandler::Ptr _pluginHandler;
+    
+    // xbot shared memory for RT plugin
+    XBot::SharedMemory::Ptr _shared_memory;
 
     // control rate
     double _control_rate;
