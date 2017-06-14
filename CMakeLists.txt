@@ -4,19 +4,18 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 find_package(gazebo REQUIRED)
 find_package(XBotCoreModel REQUIRED)
 find_package(XCM REQUIRED)
-find_package(XBotCore-interfaces REQUIRED)
 find_package(boost QUIET)
 find_package(sharedlibpp REQUIRED)
 find_package(kdl_parser REQUIRED)
 
 include_directories(include
                     ${GAZEBO_INCLUDE_DIRS}
-                    ${XBotCore-interfaces_INCLUDE_DIRS}
                     ${XBotCoreModel_INCLUDE_DIRS}
                     ${kdl_parser_INCLUDE_DIRS}
                     ${sharedlibpp_INCLUDE_DIRS}
                     ${XCM_INCLUDE_DIRS}
                     )
+
 link_directories(${GAZEBO_LIBRARY_DIRS} )
 
 list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
@@ -56,7 +55,6 @@ target_link_libraries(GazeboXBotPlugin ${GAZEBO_LIBRARIES}
                                        ${Boost_LIBRARIES}
                                        ${XBotCoreModel_LIBRARIES}
                                        ${sharedlibpp_LIBRARIES}
-                                       ${XBotCore-interfaces_LIBRARIES}
                                        ${XCM_LIBRARIES}
                                        yaml-cpp
                                        JointController
