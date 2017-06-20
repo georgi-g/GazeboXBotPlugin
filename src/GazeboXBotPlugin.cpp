@@ -52,7 +52,7 @@ gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 
 gazebo::GazeboXBotPlugin::~GazeboXBotPlugin()
 {
-    std::cout << "~GazeboXBotPlugin()" << std::endl;
+    std::cerr << "~GazeboXBotPlugin()" << std::endl;
     close_all();
 
 }
@@ -316,7 +316,8 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 
     if( g_loop_ok == 0 ){
         std::cout << "CTRL+C detected..." << std::endl;
-        close_all();
+        // NOTE calling explicitly the destructor
+        this->~GazeboXBotPlugin();
         exit(1);
     }
 
