@@ -115,6 +115,17 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
     for (unsigned int gazebo_joint = 0; gazebo_joint < gazebo_models_joints.size(); gazebo_joint++) {
         std::string gazebo_joint_name = gazebo_models_joints[gazebo_joint]->GetName();
+
+        if(std::find(_robot->getEnabledJointNames().begin(),
+                  _robot->getEnabledJointNames().end(), gazebo_joint_name) ==
+                _robot->getEnabledJointNames().end())
+        {
+            std::cout << gazebo_joint_name<<" is not present in the list of enabled joints, ";
+            std::cout << " therefore will not be controlled by XBot!" << std::endl;
+            continue;
+        }
+
+
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
 
