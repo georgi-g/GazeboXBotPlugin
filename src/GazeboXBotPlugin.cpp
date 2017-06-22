@@ -159,7 +159,7 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     }
     
     // init and update sensors
-    gazebo::sensors::SensorManager::Instance()->Update(true);
+//     gazebo::sensors::SensorManager::Instance()->Update(true);
     
     // get the list of sensors
     _sensors = gazebo::sensors::SensorManager::Instance()->GetSensors();
