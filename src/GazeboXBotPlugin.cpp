@@ -34,6 +34,7 @@
 #include <gazebo/sensors/sensors.hh>
 
 
+
 sig_atomic_t g_loop_ok = 1;
 
 void sigint_handler(int s){
@@ -102,8 +103,12 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     (*anymap)["XBotFT"] = boost::any(xbot_ft);
     (*anymap)["XBotIMU"] = boost::any(xbot_imu);
     (*anymap)["XBotHand"] = boost::any(xbot_hand);
+    
+    std::cout<<"BEFORE"<<std::endl;
 
     _robot = XBot::RobotInterface::getRobot(_path_to_config, anymap, "XBotRT");
+    
+    std::cout<<"after"<<std::endl;
 
     // create time provider function
     boost::function<double()> time_func = boost::bind(&gazebo::GazeboXBotPlugin::get_time, this);
@@ -291,6 +296,8 @@ void gazebo::GazeboXBotPlugin::Init()
 
     // Set _previous_time
     _previous_time = get_time();
+    
+    initGrasping();
 
     std::cout << "GazeboXBotPlugin Init() completed" << std::endl;
 
@@ -306,6 +313,25 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
 {
     std::shared_ptr<XBot::IXBotJoint> xbot_joint(this);
     return _pluginHandler->init_plugins(_shared_memory, xbot_joint);
+}
+
+void gazebo::GazeboXBotPlugin::initGrasping()
+{
+    
+    int argc = 1;
+    const char *arg = "MagneticGrasping";
+    char* argg = const_cast<char*>(arg);
+    char** argv = &argg;
+
+    if(!ros::isInitialized()){
+        ros::init(argc, argv, "MagneticGrasping");
+    }
+    
+    _nh = std::make_shared<ros::NodeHandle>();
+    //_robot->get
+    _grasp = _nh->advertise<std_msgs::Bool>("/grasp/RWrMot3/autoGrasp",1); //TBD take the general link
+    
+     std::cout << "INITGRASPING()" << std::endl;
 }
 
 void gazebo::GazeboXBotPlugin::close_all()
@@ -736,6 +762,29 @@ bool gazebo::GazeboXBotPlugin::get_ft_rtt(int ft_id, double& rtt)
     return true;
 }
 
+
+bool gazebo::GazeboXBotPlugin::grasp(int hand_id, double grasp_percentage)
+{
+   std::cout << "GRASP" << std::endl;
+   
+  std_msgs::Bool message;
+  if(grasp_percentage == 0)
+    message.data = false;
+  else
+    message.data = true;
+  std::cout<<"GRASP_COMMAND"<<message.data<<std::endl;
+  _grasp.publish (message);
+  
+  return true;
+}
+    
+double gazebo::GazeboXBotPlugin::get_grasp_state(int hand_id)
+{
+  //TBD get from outside (ask to implement as a service)
+   //std::cout << "GRASPSTATE" << std::endl;
+   
+   return 0;
+}
 
 
 bool gazebo::GazeboXBotPlugin::computeAbsolutePath (const std::string& input_path,

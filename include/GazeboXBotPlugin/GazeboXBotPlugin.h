@@ -37,6 +37,8 @@
 
 #include <GazeboXBotPlugin/JointController.h>
 #include <GazeboXBotPlugin/CallbackHelper.h>
+#include <std_msgs/Bool.h>
+#include <ros/ros.h>
 
 
 namespace gazebo
@@ -109,6 +111,8 @@ private:
     void close_all();
 
     double get_time();
+    
+    void initGrasping();
 
 
     // xbot robot
@@ -164,6 +168,11 @@ private:
     std::map<int, gazebo::sensors::ImuSensorPtr> _imu_gazebo_map;
     // ft callback helpers
     std::map<int, gazebo::sensors::ForceTorqueSensorPtr> _ft_gazebo_map;
+    
+    //grasping
+    ros::Publisher _grasp;
+    
+    std::shared_ptr<ros::NodeHandle> _nh;
 
     // NOTE IXBotJoint getters
     virtual bool get_link_pos(int joint_id, double& link_pos) final;
@@ -228,6 +237,11 @@ private:
     virtual bool get_imu_fault(int imu_id, double& fault) final;
 
     virtual bool get_imu_rtt(int imu_id, double& rtt) final;
+    
+    //NOTE IXBotHand
+    virtual bool grasp(int hand_id, double grasp_percentage) final;
+    
+    virtual double get_grasp_state(int hand_id) final;
 
 
 };
