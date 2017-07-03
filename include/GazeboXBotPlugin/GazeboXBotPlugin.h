@@ -45,7 +45,8 @@ class GazeboXBotPlugin :
     public ModelPlugin,
     public XBot::IXBotJoint, 
     public XBot::IXBotIMU,
-    public XBot::IXBotFT
+    public XBot::IXBotFT,
+    public XBot::IXBotHand
 
 {
 
