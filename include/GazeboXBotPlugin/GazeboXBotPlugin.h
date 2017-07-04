@@ -169,9 +169,10 @@ private:
     // ft callback helpers
     std::map<int, gazebo::sensors::ForceTorqueSensorPtr> _ft_gazebo_map;
     
-    //grasping
-    ros::Publisher _grasp;
     
+    //grasping
+    std::map<int, ros::Publisher> _grasp;
+        
     std::shared_ptr<ros::NodeHandle> _nh;
 
     // NOTE IXBotJoint getters

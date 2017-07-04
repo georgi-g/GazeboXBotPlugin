@@ -311,12 +311,16 @@ void gazebo::GazeboXBotPlugin::initGrasping()
     if(!ros::isInitialized()){
         ros::init(argc, argv, "MagneticGrasping");
     }
-    
+      
     _nh = std::make_shared<ros::NodeHandle>();
-    //_robot->get
-    _grasp = _nh->advertise<std_msgs::Bool>("/grasp/RWrMot3/autoGrasp",1); //TBD take the general link
+   
+    for( auto& pair : _robot->getHand()){
+      std::string hand_name= pair.second->getHandName();
+      int hand_id = pair.second->getHandId();
+      std::string hand_link =_robot->getUrdf().getJoint(hand_name)->parent_link_name;
+      _grasp[hand_id] = _nh->advertise<std_msgs::Bool>("/grasp/"+hand_link+"/autoGrasp",1);
+    }
     
-     std::cout << "INITGRASPING()" << std::endl;
 }
 
 void gazebo::GazeboXBotPlugin::close_all()
@@ -747,25 +751,25 @@ bool gazebo::GazeboXBotPlugin::get_ft_rtt(int ft_id, double& rtt)
 
 bool gazebo::GazeboXBotPlugin::grasp(int hand_id, double grasp_percentage)
 {
-   std::cout << "GRASP" << std::endl;
-   
-  std_msgs::Bool message;
-  if(grasp_percentage == 0)
-    message.data = false;
-  else
-    message.data = true;
-  std::cout << "Hand : " << hand_id << " - GRASP_COMMAND : "<< grasp_percentage <<std::endl;
-  _grasp.publish (message);
+    std_msgs::Bool message;    
+    
+    if(grasp_percentage == 0)
+      message.data = false;
+    else
+      message.data = true;
+    
+    _grasp[hand_id].publish (message);
   
   return true;
 }
     
 double gazebo::GazeboXBotPlugin::get_grasp_state(int hand_id)
 {
-  //TBD get from outside (ask to implement as a service)
-//    std::cout << "GRASPSTATE" << std::endl;
-   
-   return 0;
+  
+   double grasp_state = 0;
+   grasp_state = _robot->getHand(hand_id)->getGraspReference();
+       
+   return grasp_state;
 }
 
 
