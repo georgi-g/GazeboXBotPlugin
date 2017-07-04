@@ -44,7 +44,6 @@ void sigint_handler(int s){
 
 gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 {
-    std::cout << "GazeboXBotPlugin()" << std::endl;
     _shared_memory = std::make_shared<XBot::SharedMemory>();
     signal(SIGINT, sigint_handler);
 
@@ -53,18 +52,11 @@ gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 
 gazebo::GazeboXBotPlugin::~GazeboXBotPlugin()
 {
-    std::cerr << "~GazeboXBotPlugin()" << std::endl;
     close_all();
-
 }
 
 void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 {
-    std::cout << "GazeboXBotPlugin Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)" << std::endl;
-//     int a;
-//     std::cin >> a;
-
-
     // Store the pointer to the model
     _model = _parent;
 
@@ -91,6 +83,7 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     // compute path
     computeAbsolutePath(_path_to_config, "/", _path_to_config);
 
+    // TBD check if the load is successfull
     YAML::Node root = YAML::LoadFile(_path_to_config);
 
     // create robot from config file and any map
@@ -103,13 +96,10 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     (*anymap)["XBotFT"] = boost::any(xbot_ft);
     (*anymap)["XBotIMU"] = boost::any(xbot_imu);
     (*anymap)["XBotHand"] = boost::any(xbot_hand);
-    
-    std::cout<<"BEFORE"<<std::endl;
 
+    // initialize the robot
     _robot = XBot::RobotInterface::getRobot(_path_to_config, anymap, "XBotRT");
     
-    std::cout<<"after"<<std::endl;
-
     // create time provider function
     boost::function<double()> time_func = boost::bind(&gazebo::GazeboXBotPlugin::get_time, this);
     // create time provider
@@ -136,12 +126,14 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
 
+        // setting gains
         _joint_controller_map[gazebo_joint_name] =
             std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
 
             double p_gain = 300;
             double d_gain = 1;
 
+        // setting the gains
         if( root["GazeboXBotPlugin"]["gains"][gazebo_joint_name] ){
             p_gain = root["GazeboXBotPlugin"]["gains"][gazebo_joint_name]["p"].as<double>();
             d_gain = root["GazeboXBotPlugin"]["gains"][gazebo_joint_name]["d"].as<double>();
@@ -149,7 +141,6 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 
 
         _joint_controller_map.at(gazebo_joint_name)->setGains(p_gain, 0, d_gain);
-
         _joint_controller_map.at(gazebo_joint_name)->enableFeedforward();
 
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
@@ -164,9 +155,6 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         // defaulte control rate at 1ms
         _control_rate = 0.001;
     }
-    
-    // init and update sensors
-//     gazebo::sensors::SensorManager::Instance()->Update(true);
     
     // get the list of sensors
     _sensors = gazebo::sensors::SensorManager::Instance()->GetSensors();
@@ -297,11 +285,8 @@ void gazebo::GazeboXBotPlugin::Init()
     // Set _previous_time
     _previous_time = get_time();
     
+    // init grasping ROS node
     initGrasping();
-
-    std::cout << "GazeboXBotPlugin Init() completed" << std::endl;
-
-
 }
 
 bool gazebo::GazeboXBotPlugin::loadPlugins()
@@ -336,8 +321,6 @@ void gazebo::GazeboXBotPlugin::initGrasping()
 
 void gazebo::GazeboXBotPlugin::close_all()
 {
-    std::cout << "void gazebo::GazeboXBotPlugin::close_all()" << std::endl;
-
     _pluginHandler->close();
 
 }
@@ -375,7 +358,6 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 void gazebo::GazeboXBotPlugin::Reset()
 {
     gazebo::ModelPlugin::Reset();
-    std::cout << "Reset()" << std::endl;
 }
 
 
@@ -772,7 +754,7 @@ bool gazebo::GazeboXBotPlugin::grasp(int hand_id, double grasp_percentage)
     message.data = false;
   else
     message.data = true;
-  std::cout<<"GRASP_COMMAND"<<message.data<<std::endl;
+  std::cout << "Hand : " << hand_id << " - GRASP_COMMAND : "<< grasp_percentage <<std::endl;
   _grasp.publish (message);
   
   return true;
@@ -781,7 +763,7 @@ bool gazebo::GazeboXBotPlugin::grasp(int hand_id, double grasp_percentage)
 double gazebo::GazeboXBotPlugin::get_grasp_state(int hand_id)
 {
   //TBD get from outside (ask to implement as a service)
-   //std::cout << "GRASPSTATE" << std::endl;
+//    std::cout << "GRASPSTATE" << std::endl;
    
    return 0;
 }
