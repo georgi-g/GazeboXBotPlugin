@@ -34,6 +34,7 @@
 #include <gazebo/sensors/sensors.hh>
 
 
+
 sig_atomic_t g_loop_ok = 1;
 
 void sigint_handler(int s){
@@ -43,7 +44,6 @@ void sigint_handler(int s){
 
 gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 {
-    std::cout << "GazeboXBotPlugin()" << std::endl;
     _shared_memory = std::make_shared<XBot::SharedMemory>();
     signal(SIGINT, sigint_handler);
 
@@ -52,18 +52,11 @@ gazebo::GazeboXBotPlugin::GazeboXBotPlugin()
 
 gazebo::GazeboXBotPlugin::~GazeboXBotPlugin()
 {
-    std::cerr << "~GazeboXBotPlugin()" << std::endl;
     close_all();
-
 }
 
 void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 {
-    std::cout << "GazeboXBotPlugin Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)" << std::endl;
-//     int a;
-//     std::cin >> a;
-
-
     // Store the pointer to the model
     _model = _parent;
 
@@ -90,6 +83,7 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     // compute path
     computeAbsolutePath(_path_to_config, "/", _path_to_config);
 
+    // TBD check if the load is successfull
     YAML::Node root = YAML::LoadFile(_path_to_config);
 
     // create robot from config file and any map
@@ -97,12 +91,15 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     std::shared_ptr<XBot::IXBotJoint> xbot_joint(this, [](XBot::IXBotJoint* p){});
     std::shared_ptr<XBot::IXBotFT> xbot_ft(this, [](XBot::IXBotFT* p){});
     std::shared_ptr<XBot::IXBotIMU> xbot_imu(this, [](XBot::IXBotIMU* p){});
+    std::shared_ptr<XBot::IXBotHand> xbot_hand(this, [](XBot::IXBotHand* p){});
     (*anymap)["XBotJoint"] = boost::any(xbot_joint);
     (*anymap)["XBotFT"] = boost::any(xbot_ft);
     (*anymap)["XBotIMU"] = boost::any(xbot_imu);
+    (*anymap)["XBotHand"] = boost::any(xbot_hand);
 
+    // initialize the robot
     _robot = XBot::RobotInterface::getRobot(_path_to_config, anymap, "XBotRT");
-
+    
     // create time provider function
     boost::function<double()> time_func = boost::bind(&gazebo::GazeboXBotPlugin::get_time, this);
     // create time provider
@@ -129,12 +126,14 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         _jointNames.push_back(gazebo_joint_name);
         _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
 
+        // setting gains
         _joint_controller_map[gazebo_joint_name] =
             std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
 
             double p_gain = 300;
             double d_gain = 1;
 
+        // setting the gains
         if( root["GazeboXBotPlugin"]["gains"][gazebo_joint_name] ){
             p_gain = root["GazeboXBotPlugin"]["gains"][gazebo_joint_name]["p"].as<double>();
             d_gain = root["GazeboXBotPlugin"]["gains"][gazebo_joint_name]["d"].as<double>();
@@ -142,7 +141,6 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 
 
         _joint_controller_map.at(gazebo_joint_name)->setGains(p_gain, 0, d_gain);
-
         _joint_controller_map.at(gazebo_joint_name)->enableFeedforward();
 
         std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
@@ -157,9 +155,6 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
         // defaulte control rate at 1ms
         _control_rate = 0.001;
     }
-    
-    // init and update sensors
-//     gazebo::sensors::SensorManager::Instance()->Update(true);
     
     // get the list of sensors
     _sensors = gazebo::sensors::SensorManager::Instance()->GetSensors();
@@ -289,10 +284,9 @@ void gazebo::GazeboXBotPlugin::Init()
 
     // Set _previous_time
     _previous_time = get_time();
-
-    std::cout << "GazeboXBotPlugin Init() completed" << std::endl;
-
-
+    
+    // init grasping ROS node
+    initGrasping();
 }
 
 bool gazebo::GazeboXBotPlugin::loadPlugins()
@@ -306,10 +300,31 @@ bool gazebo::GazeboXBotPlugin::initPlugins()
     return _pluginHandler->init_plugins(_shared_memory, xbot_joint);
 }
 
+void gazebo::GazeboXBotPlugin::initGrasping()
+{
+    
+    int argc = 1;
+    const char *arg = "MagneticGrasping";
+    char* argg = const_cast<char*>(arg);
+    char** argv = &argg;
+
+    if(!ros::isInitialized()){
+        ros::init(argc, argv, "MagneticGrasping");
+    }
+      
+    _nh = std::make_shared<ros::NodeHandle>();
+   
+    for( auto& pair : _robot->getHand()){
+      std::string hand_name= pair.second->getHandName();
+      int hand_id = pair.second->getHandId();
+      std::string hand_link =_robot->getUrdf().getJoint(hand_name)->parent_link_name;
+      _grasp[hand_id] = _nh->advertise<std_msgs::Bool>("/grasp/"+hand_link+"/autoGrasp",1);
+    }
+    
+}
+
 void gazebo::GazeboXBotPlugin::close_all()
 {
-    std::cout << "void gazebo::GazeboXBotPlugin::close_all()" << std::endl;
-
     _pluginHandler->close();
 
 }
@@ -347,7 +362,6 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 void gazebo::GazeboXBotPlugin::Reset()
 {
     gazebo::ModelPlugin::Reset();
-    std::cout << "Reset()" << std::endl;
 }
 
 
@@ -734,6 +748,29 @@ bool gazebo::GazeboXBotPlugin::get_ft_rtt(int ft_id, double& rtt)
     return true;
 }
 
+
+bool gazebo::GazeboXBotPlugin::grasp(int hand_id, double grasp_percentage)
+{
+    std_msgs::Bool message;    
+    
+    if(grasp_percentage == 0)
+      message.data = false;
+    else
+      message.data = true;
+    
+    _grasp[hand_id].publish (message);
+  
+  return true;
+}
+    
+double gazebo::GazeboXBotPlugin::get_grasp_state(int hand_id)
+{
+  
+   double grasp_state = 0;
+   grasp_state = _robot->getHand(hand_id)->getGraspReference();
+       
+   return grasp_state;
+}
 
 
 bool gazebo::GazeboXBotPlugin::computeAbsolutePath (const std::string& input_path,
