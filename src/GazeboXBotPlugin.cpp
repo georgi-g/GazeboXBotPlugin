@@ -55,6 +55,14 @@ gazebo::GazeboXBotPlugin::~GazeboXBotPlugin()
     close_all();
 }
 
+
+void gazebo::GazeboXBotPlugin::grasp_status_Callback(const std_msgs::Bool::ConstPtr& msg, int hand_id)
+{
+  
+  _status_grasp[hand_id] = msg.get()->data;
+  return;
+}
+
 void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 {
     // Store the pointer to the model
@@ -314,11 +322,14 @@ void gazebo::GazeboXBotPlugin::initGrasping()
       
     _nh = std::make_shared<ros::NodeHandle>();
    
-    for( auto& pair : _robot->getHand()){
+    for( auto& pair : _robot->getHand()){      
       std::string hand_name= pair.second->getHandName();
       int hand_id = pair.second->getHandId();
       std::string hand_link =_robot->getUrdf().getJoint(hand_name)->parent_link_name;
       _grasp[hand_id] = _nh->advertise<std_msgs::Bool>("/grasp/"+hand_link+"/autoGrasp",1);
+      _state_grasp[hand_id] = _nh->subscribe<std_msgs::Bool>("/grasp/"+hand_link+"/state", 1, boost::bind(&gazebo::GazeboXBotPlugin::grasp_status_Callback,this,_1,hand_id));
+      _status_grasp[hand_id] = false;
+      
     }
     
 }
@@ -767,7 +778,7 @@ double gazebo::GazeboXBotPlugin::get_grasp_state(int hand_id)
 {
   
    double grasp_state = 0;
-   grasp_state = _robot->getHand(hand_id)->getGraspReference();
+   grasp_state = _status_grasp[hand_id];
        
    return grasp_state;
 }

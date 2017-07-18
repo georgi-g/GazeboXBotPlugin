@@ -113,6 +113,8 @@ private:
     double get_time();
     
     void initGrasping();
+    
+    void grasp_status_Callback(const std_msgs::Bool::ConstPtr& msg, int hand_id);
 
 
     // xbot robot
@@ -172,6 +174,8 @@ private:
     
     //grasping
     std::map<int, ros::Publisher> _grasp;
+    std::map<int, ros::Subscriber> _state_grasp;
+    std::map<int, bool> _status_grasp;
         
     std::shared_ptr<ros::NodeHandle> _nh;
 
