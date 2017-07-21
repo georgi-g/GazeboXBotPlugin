@@ -39,13 +39,13 @@
 #include <GazeboXBotPlugin/CallbackHelper.h>
 #include <GazeboXBotPlugin/GazeboXBotJoint.h>
 #include <GazeboXBotPlugin/GazeboXBotImu.h>
+#include <GazeboXBotPlugin/GazeboXBotFt.h>
 
 
 namespace gazebo
 {
 class GazeboXBotPlugin :
-    public ModelPlugin,
-    public XBot::IXBotFT
+    public ModelPlugin
 
 {
 
@@ -136,6 +136,8 @@ private:
 
     std::shared_ptr<GazeboXBotJoint> _xbot_joint;
     std::shared_ptr<GazeboXBotImu> _xbot_imu;
+    std::shared_ptr<GazeboXBotFt> _xbot_ft;
+    
     // Gazebo joint map
     std::map<std::string, gazebo::physics::JointPtr> _jointMap;
     std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;
@@ -160,17 +162,6 @@ private:
     
     // gazebo sensors attached to the current robot
     gazebo::sensors::Sensor_V _sensors_attached_to_robot;
-    
-    // ft callback helpers
-    std::map<int, gazebo::sensors::ForceTorqueSensorPtr> _ft_gazebo_map;
-
-    // NOTE IXBotFT
-    
-    virtual bool get_ft(int ft_id, std::vector< double >& ft, int channels = 6) final;
-
-    virtual bool get_ft_fault(int ft_id, double& fault) final;
-
-    virtual bool get_ft_rtt(int ft_id, double& rtt) final;
     
 };
 

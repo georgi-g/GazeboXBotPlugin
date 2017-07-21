@@ -96,8 +96,9 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     XBot::AnyMapPtr anymap = std::make_shared<XBot::AnyMap>();
     _xbot_joint = std::make_shared<GazeboXBotJoint>();
     _xbot_imu = std::make_shared<GazeboXBotImu>();
+    _xbot_ft = std::make_shared<GazeboXBotFt>();
     std::shared_ptr<XBot::IXBotJoint> xbot_joint = _xbot_joint;
-    std::shared_ptr<XBot::IXBotFT> xbot_ft(this, [](XBot::IXBotFT* p){});
+    std::shared_ptr<XBot::IXBotFT> xbot_ft = _xbot_ft;
     std::shared_ptr<XBot::IXBotIMU> xbot_imu = _xbot_imu;
     (*anymap)["XBotJoint"] = boost::any(xbot_joint);
     (*anymap)["XBotFT"] = boost::any(xbot_ft);
@@ -194,6 +195,7 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
 bool gazebo::GazeboXBotPlugin::loadFTSensors()
 {
     std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::map<int, gazebo::sensors::ForceTorqueSensorPtr> _ft_gazebo_map;
     bool ret = true;
     std::cout << "Loading F-T sensors ... " << std::endl;
     
@@ -232,6 +234,9 @@ bool gazebo::GazeboXBotPlugin::loadFTSensors()
         
     }
 
+    if (ret)
+        _xbot_ft->setRobot(_robot, _ft_gazebo_map);
+    
     return ret;
 }
 
@@ -355,61 +360,6 @@ void gazebo::GazeboXBotPlugin::Reset()
 {
     gazebo::ModelPlugin::Reset();
     std::cout << "Reset()" << std::endl;
-}
-
-bool gazebo::GazeboXBotPlugin::get_ft(int ft_id, std::vector< double >& ft, int channels)
-{
-    auto it =_ft_gazebo_map.find(ft_id);
-    // if ft is not found
-    if( it == _ft_gazebo_map.end() ) {
-        std::cout << "WARNING: FT with id : " << ft_id << " not found in the GAZEBO model you loaded: check you put the right urdf_path, srdf_path and joint_config_map in your YAML config file." << std::endl;
-        return false;
-    }
-
-    // imu found
-    auto ft_gazebo = it->second;
-
-    ft.assign(channels, 0.0);
-
-    if( !ft_gazebo ) {
-        ft.assign(channels, 0.0);
-        return false;
-    }
-
-    ft[0] = ft_gazebo->Force().X();
-    ft[1] = ft_gazebo->Force().Y();
-    ft[2] = ft_gazebo->Force().Z();
-    ft[3] = ft_gazebo->Torque().X();
-    ft[4] = ft_gazebo->Torque().Y();
-    ft[5] = ft_gazebo->Torque().Z();
-
-    return true;
-}
-
-bool gazebo::GazeboXBotPlugin::get_ft_fault(int ft_id, double& fault)
-{
-    auto ft_ptr = _robot->getForceTorque(ft_id);
-
-    if(!ft_ptr){
-        fault = 0;
-        return false;
-    }
-
-    fault = 0;
-    return true;
-}
-
-bool gazebo::GazeboXBotPlugin::get_ft_rtt(int ft_id, double& rtt)
-{
-    auto ft_ptr = _robot->getForceTorque(ft_id);
-
-    if(!ft_ptr){
-        rtt = 0;
-        return false;
-    }
-
-    rtt = 0;
-    return true;
 }
 
 
