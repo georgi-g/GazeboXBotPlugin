@@ -55,6 +55,9 @@ target_link_libraries(GazeboXBotJoint ${GAZEBO_LIBRARIES} )
 add_library(GazeboXBotImu SHARED src/GazeboXBotImu.cpp)
 target_link_libraries(GazeboXBotImu ${GAZEBO_LIBRARIES} )
 
+add_library(GazeboXBotFt SHARED src/GazeboXBotFt.cpp)
+target_link_libraries(GazeboXBotFt ${GAZEBO_LIBRARIES} )
+
 # GazeboXBotPlugin
 add_library(GazeboXBotPlugin SHARED src/GazeboXBotPlugin.cpp)
 target_link_libraries(GazeboXBotPlugin ${GAZEBO_LIBRARIES}
@@ -68,6 +71,7 @@ target_link_libraries(GazeboXBotPlugin ${GAZEBO_LIBRARIES}
                                        JointImpedanceController
                                        GazeboXBotJoint
                                        GazeboXBotImu
+                                       GazeboXBotFt
                                        )
 
 install(TARGETS GazeboXBotPlugin RUNTIME LIBRARY DESTINATION lib)
@@ -92,4 +96,5 @@ install(DIRECTORY include/
 
 install(TARGETS GazeboXBotJoint RUNTIME LIBRARY DESTINATION lib)
 install(TARGETS GazeboXBotImu RUNTIME LIBRARY DESTINATION lib)
+install(TARGETS GazeboXBotFt RUNTIME LIBRARY DESTINATION lib)
 
