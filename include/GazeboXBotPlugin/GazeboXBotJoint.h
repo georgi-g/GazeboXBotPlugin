@@ -27,10 +27,7 @@ public :
      */
     virtual ~GazeboXBotJoint();
 
-    void setRobot(
-        XBot::RobotInterface::Ptr robot,
-        std::map<std::string, gazebo::physics::JointPtr> jointMap,
-        std::map<std::string, XBot::JointController::Ptr> joint_controller_map);
+    bool loadJoints(XBot::RobotInterface::Ptr robot, physics::ModelPtr model, YAML::Node& root);
     
     void XBotUpdate();
     
@@ -40,6 +37,9 @@ private:
     // xbot robot
     XBot::RobotInterface::Ptr _robot;
     
+    // Gazebo joint names vector
+    std::vector<std::string> _jointNames;
+
     // Gazebo joint map
     std::map<std::string, gazebo::physics::JointPtr> _jointMap;
     std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;

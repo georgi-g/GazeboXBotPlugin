@@ -99,8 +99,6 @@ private:
 
     bool loadPlugins();
     
-    bool loadJoints(YAML::Node& root);
-    
     bool loadFTSensors();
 
     bool loadImuSensors();

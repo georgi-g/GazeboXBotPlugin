@@ -50,7 +50,9 @@ add_library(DefaultGazeboPID SHARED src/DefaultGazeboPID.cpp)
 target_link_libraries(DefaultGazeboPID JointController ${GAZEBO_LIBRARIES} )
 
 add_library(GazeboXBotJoint SHARED src/GazeboXBotJoint.cpp)
-target_link_libraries(GazeboXBotJoint ${GAZEBO_LIBRARIES} )
+target_link_libraries(GazeboXBotJoint   ${GAZEBO_LIBRARIES}
+                                        yaml-cpp
+                                        JointImpedanceController )
 
 add_library(GazeboXBotImu SHARED src/GazeboXBotImu.cpp)
 target_link_libraries(GazeboXBotImu ${GAZEBO_LIBRARIES} )
