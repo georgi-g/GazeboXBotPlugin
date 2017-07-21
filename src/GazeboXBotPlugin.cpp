@@ -95,9 +95,10 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     // create robot from config file and any map
     XBot::AnyMapPtr anymap = std::make_shared<XBot::AnyMap>();
     _xbot_joint = std::make_shared<GazeboXBotJoint>();
+    std::shared_ptr<XBot::IXBotJoint> xbot_joint = _xbot_joint;
     std::shared_ptr<XBot::IXBotFT> xbot_ft(this, [](XBot::IXBotFT* p){});
     std::shared_ptr<XBot::IXBotIMU> xbot_imu(this, [](XBot::IXBotIMU* p){});
-    (*anymap)["XBotJoint"] = boost::any(_xbot_joint);
+    (*anymap)["XBotJoint"] = boost::any(xbot_joint);
     (*anymap)["XBotFT"] = boost::any(xbot_ft);
     (*anymap)["XBotIMU"] = boost::any(xbot_imu);
 
