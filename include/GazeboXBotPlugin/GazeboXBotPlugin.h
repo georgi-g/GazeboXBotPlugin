@@ -99,9 +99,9 @@ private:
 
     bool loadPlugins();
     
-    bool loadFTSensors();
+    bool loadFTSensors(gazebo::sensors::Sensor_V& sensors_attached_to_robot);
 
-    bool loadImuSensors();
+    bool loadImuSensors(gazebo::sensors::Sensor_V& sensors_attached_to_robot);
 
     bool initPlugins();
 
@@ -149,13 +149,6 @@ private:
 
     // gazebo transport node
     gazebo::transport::NodePtr _node;
-    
-    // gazebo sensors
-    gazebo::sensors::Sensor_V _sensors;
-    
-    // gazebo sensors attached to the current robot
-    gazebo::sensors::Sensor_V _sensors_attached_to_robot;
-    
 };
 
 // Register this plugin with the simulator

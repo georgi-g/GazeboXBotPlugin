@@ -127,8 +127,13 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     // init and update sensors
 //     gazebo::sensors::SensorManager::Instance()->Update(true);
     
+    // gazebo sensors
     // get the list of sensors
-    _sensors = gazebo::sensors::SensorManager::Instance()->GetSensors();
+    gazebo::sensors::Sensor_V _sensors = gazebo::sensors::SensorManager::Instance()->GetSensors();
+    
+    // gazebo sensors attached to the current robot
+    gazebo::sensors::Sensor_V _sensors_attached_to_robot;
+    
     
     // if multiple robot are simulated we need to get only the sensors attached to our robot
     for(unsigned int i = 0; i < _sensors.size(); ++i) {
@@ -146,14 +151,14 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     }
 
     // load FT sensors
-    loadFTSensors();
+    loadFTSensors(_sensors_attached_to_robot);
 
     // load IMU sensors
-    loadImuSensors();
+    loadImuSensors(_sensors_attached_to_robot);
 
 }
 
-bool gazebo::GazeboXBotPlugin::loadFTSensors()
+bool gazebo::GazeboXBotPlugin::loadFTSensors(gazebo::sensors::Sensor_V& _sensors_attached_to_robot)
 {
     std::cout << __PRETTY_FUNCTION__ << std::endl;
     std::map<int, gazebo::sensors::ForceTorqueSensorPtr> _ft_gazebo_map;
@@ -201,7 +206,7 @@ bool gazebo::GazeboXBotPlugin::loadFTSensors()
     return ret;
 }
 
-bool gazebo::GazeboXBotPlugin::loadImuSensors()
+bool gazebo::GazeboXBotPlugin::loadImuSensors(gazebo::sensors::Sensor_V& _sensors_attached_to_robot)
 {
     std::cout << __PRETTY_FUNCTION__ << std::endl;
     std::map<int, gazebo::sensors::ImuSensorPtr> _imu_gazebo_map;
