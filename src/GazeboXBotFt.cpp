@@ -10,12 +10,50 @@ gazebo::GazeboXBotFt::~GazeboXBotFt()
 {
 }
 
-void gazebo::GazeboXBotFt::setRobot(
-    XBot::RobotInterface::Ptr robot,
-    std::map<int, gazebo::sensors::ForceTorqueSensorPtr> ft_gazebo_map)
+bool gazebo::GazeboXBotFt::loadFTSensors(XBot::RobotInterface::Ptr robot, gazebo::sensors::Sensor_V& _sensors_attached_to_robot)
 {
     _robot = robot;
-    _ft_gazebo_map = ft_gazebo_map;
+    
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+    bool ret = true;
+    std::cout << "Loading F-T sensors ... " << std::endl;
+    
+    for( const auto& FT_pair : _robot->getForceTorque() ) {
+
+        // check XBot FT ptr
+        if(!FT_pair.second){
+            std::cout << "ERROR! FT NULLPTR!!!" << std::endl;
+            continue;
+        }
+
+        // get id and name of the FT sensor
+        const XBot::ForceTorqueSensor& ft = *FT_pair.second;
+        int ft_id = ft.getSensorId();
+        std::string ft_name = ft.getSensorName();
+
+        for(unsigned int i = 0; i < _sensors_attached_to_robot.size(); ++i) {
+            #if GAZEBO_MAJOR_VERSION <= 6
+            // if the sensor is a FT and has the ft_name
+            if( ( _sensors_attached_to_robot[i]->GetType().compare("force_torque") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->GetName() == ft_name ) )
+            {
+                _ft_gazebo_map[ft_id] = boost::static_pointer_cast<gazebo::sensors::ForceTorqueSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "F-T found: " << _ft_gazebo_map.at(ft_id)->GetName() << std::endl;
+            }
+            #else 
+            if( ( _sensors_attached_to_robot[i]->Type().compare("force_torque") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->Name() == ft_name ) )
+            {
+                _ft_gazebo_map[ft_id] = std::static_pointer_cast<gazebo::sensors::ForceTorqueSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "F-T found: " << _ft_gazebo_map.at(ft_id)->Name() << std::endl;
+            }
+            #endif
+
+        }
+        
+    }
+
+    return ret;
 }
 
 bool gazebo::GazeboXBotFt::get_ft(int ft_id, std::vector< double >& ft, int channels)

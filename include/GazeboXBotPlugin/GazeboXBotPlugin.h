@@ -99,10 +99,6 @@ private:
 
     bool loadPlugins();
     
-    bool loadFTSensors(gazebo::sensors::Sensor_V& sensors_attached_to_robot);
-
-    bool loadImuSensors(gazebo::sensors::Sensor_V& sensors_attached_to_robot);
-
     bool initPlugins();
 
     void close_all();

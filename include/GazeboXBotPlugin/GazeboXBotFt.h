@@ -27,10 +27,10 @@ public :
      */
     virtual ~GazeboXBotFt();
 
-    void setRobot(
+    bool loadFTSensors(
         XBot::RobotInterface::Ptr robot,
-        std::map<int, gazebo::sensors::ForceTorqueSensorPtr> ft_gazebo_map);
-    
+        gazebo::sensors::Sensor_V& _sensors_attached_to_robot);
+
 protected:
 
 private:
