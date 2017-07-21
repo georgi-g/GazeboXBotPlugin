@@ -86,4 +86,5 @@ install(DIRECTORY include/
         DESTINATION include
         FILES_MATCHING PATTERN "*.h*")
 
+install(TARGETS GazeboXBotJoint RUNTIME LIBRARY DESTINATION lib)
 
