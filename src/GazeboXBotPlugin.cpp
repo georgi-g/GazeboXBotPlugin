@@ -114,45 +114,7 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     // create plugin handler
     _pluginHandler = std::make_shared<XBot::PluginHandler>(_robot, time_provider, "XBotRTPlugins");
 
-    // iterate over Gazebo model Joint vector and store Joint pointers in a map
-    const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
-    for (unsigned int gazebo_joint = 0; gazebo_joint < gazebo_models_joints.size(); gazebo_joint++) {
-        std::string gazebo_joint_name = gazebo_models_joints[gazebo_joint]->GetName();
-
-        if(std::find(_robot->getEnabledJointNames().begin(),
-                  _robot->getEnabledJointNames().end(), gazebo_joint_name) ==
-                _robot->getEnabledJointNames().end())
-        {
-            std::cout << gazebo_joint_name<<" is not present in the list of enabled joints, ";
-            std::cout << " therefore will not be controlled by XBot!" << std::endl;
-            continue;
-        }
-
-
-        _jointNames.push_back(gazebo_joint_name);
-        _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
-
-        _joint_controller_map[gazebo_joint_name] =
-            std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
-
-            double p_gain = 300;
-            double d_gain = 1;
-
-        if( root["GazeboXBotPlugin"]["gains"][gazebo_joint_name] ){
-            p_gain = root["GazeboXBotPlugin"]["gains"][gazebo_joint_name]["p"].as<double>();
-            d_gain = root["GazeboXBotPlugin"]["gains"][gazebo_joint_name]["d"].as<double>();
-        }
-
-
-        _joint_controller_map.at(gazebo_joint_name)->setGains(p_gain, 0, d_gain);
-
-        _joint_controller_map.at(gazebo_joint_name)->enableFeedforward();
-
-        std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
-
-    }
-    
-    _xbot_joint->setRobot(_robot, _jointMap, _joint_controller_map);
+    loadJoints(root);
 
     // set the control rate
     if(root["GazeboXBotPlugin"]["control_rate"]){
@@ -190,6 +152,57 @@ void gazebo::GazeboXBotPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _
     // load IMU sensors
     loadImuSensors();
 
+}
+
+bool gazebo::GazeboXBotPlugin::loadJoints(YAML::Node& root)
+{
+    // Gazebo joint names vector
+    std::vector<std::string> _jointNames;
+
+    // Gazebo joint map
+    std::map<std::string, gazebo::physics::JointPtr> _jointMap;
+    
+    // iterate over Gazebo model Joint vector and store Joint pointers in a map
+    const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
+    for (unsigned int gazebo_joint = 0; gazebo_joint < gazebo_models_joints.size(); gazebo_joint++) {
+        std::string gazebo_joint_name = gazebo_models_joints[gazebo_joint]->GetName();
+
+        if(std::find(_robot->getEnabledJointNames().begin(),
+                  _robot->getEnabledJointNames().end(), gazebo_joint_name) ==
+                _robot->getEnabledJointNames().end())
+        {
+            std::cout << gazebo_joint_name<<" is not present in the list of enabled joints, ";
+            std::cout << " therefore will not be controlled by XBot!" << std::endl;
+            continue;
+        }
+
+
+        _jointNames.push_back(gazebo_joint_name);
+        _jointMap[gazebo_joint_name] = _model->GetJoint(gazebo_joint_name);
+
+        _joint_controller_map[gazebo_joint_name] =
+            std::make_shared<XBot::JointImpedanceController>( _model->GetJoint(gazebo_joint_name) );
+
+        double p_gain = 300;
+        double d_gain = 1;
+
+        if( root["GazeboXBotPlugin"]["gains"][gazebo_joint_name] ){
+            p_gain = root["GazeboXBotPlugin"]["gains"][gazebo_joint_name]["p"].as<double>();
+            d_gain = root["GazeboXBotPlugin"]["gains"][gazebo_joint_name]["d"].as<double>();
+        }
+
+
+        _joint_controller_map.at(gazebo_joint_name)->setGains(p_gain, 0, d_gain);
+
+        _joint_controller_map.at(gazebo_joint_name)->enableFeedforward();
+
+        std::cout << "Joint # " << gazebo_joint << " - " << gazebo_joint_name << std::endl;
+
+    }
+    
+    _xbot_joint->setRobot(_robot, _jointMap, _joint_controller_map);
+    
+    return true;
 }
 
 bool gazebo::GazeboXBotPlugin::loadFTSensors()

@@ -99,6 +99,8 @@ private:
 
     bool loadPlugins();
     
+    bool loadJoints(YAML::Node& root);
+    
     bool loadFTSensors();
 
     bool loadImuSensors();
@@ -131,15 +133,11 @@ private:
     // path to config file
     std::string _path_to_config;
 
-    // Gazebo joint names vector
-    std::vector<std::string> _jointNames;
-
     std::shared_ptr<GazeboXBotJoint> _xbot_joint;
     std::shared_ptr<GazeboXBotImu> _xbot_imu;
     std::shared_ptr<GazeboXBotFt> _xbot_ft;
     
     // Gazebo joint map
-    std::map<std::string, gazebo::physics::JointPtr> _jointMap;
     std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;
 
     // model
