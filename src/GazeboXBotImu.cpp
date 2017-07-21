@@ -10,12 +10,50 @@ gazebo::GazeboXBotImu::~GazeboXBotImu()
 {
 }
 
-void gazebo::GazeboXBotImu::setRobot(
-    XBot::RobotInterface::Ptr robot,
-    std::map<int, gazebo::sensors::ImuSensorPtr> imu_gazebo_map)
+bool gazebo::GazeboXBotImu::loadImuSensors(XBot::RobotInterface::Ptr robot, gazebo::sensors::Sensor_V& _sensors_attached_to_robot)
 {
     _robot = robot;
-    _imu_gazebo_map = imu_gazebo_map;
+    
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+    bool ret = true;
+    std::cout << "Loading IMU sensors ... " << std::endl;
+    
+    for( const auto& imu_pair : _robot->getImu() ) {
+
+        // check XBot FT ptr
+        if(!imu_pair.second){
+            std::cout << "ERROR! imu NULLPTR!!!" << std::endl;
+            continue;
+        }
+
+        // get id and name of the FT sensor
+        const XBot::ImuSensor& imu = *imu_pair.second;
+        int imu_id = imu.getSensorId();
+        std::string imu_name = imu.getSensorName();
+
+        for(unsigned int i = 0; i < _sensors_attached_to_robot.size(); ++i) {
+            #if GAZEBO_MAJOR_VERSION <= 6
+            // if the sensor is a IMU and has the ft_name
+            if( ( _sensors_attached_to_robot[i]->GetType().compare("imu") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->GetName() == imu_name ) )
+            {
+                _imu_gazebo_map[imu_id] = boost::static_pointer_cast<gazebo::sensors::ImuSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "IMU found: " << _imu_gazebo_map.at(imu_id)->GetName() << std::endl;
+            }
+            #else 
+            if( ( _sensors_attached_to_robot[i]->Type().compare("imu") == 0 ) &&
+                ( _sensors_attached_to_robot[i]->Name() == imu_name ) )
+            {
+                _imu_gazebo_map[imu_id] = std::static_pointer_cast<gazebo::sensors::ImuSensor>(_sensors_attached_to_robot[i]); 
+                std::cout << "IMU found: " << _imu_gazebo_map.at(imu_id)->Name() << std::endl;
+            }
+            #endif
+
+        }
+        
+    }
+    
+    return ret;
 }
 
 bool gazebo::GazeboXBotImu::get_imu(int imu_id,

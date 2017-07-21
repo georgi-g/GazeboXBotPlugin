@@ -26,10 +26,10 @@ public :
      */
     virtual ~GazeboXBotImu();
 
-    void setRobot(
+    bool loadImuSensors(
         XBot::RobotInterface::Ptr robot,
-        std::map<int, gazebo::sensors::ImuSensorPtr> imu_gazebo_map);
-    
+        gazebo::sensors::Sensor_V& _sensors_attached_to_robot);
+
 protected:
 
 private:
