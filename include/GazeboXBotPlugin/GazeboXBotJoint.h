@@ -32,6 +32,8 @@ public :
         std::map<std::string, gazebo::physics::JointPtr> jointMap,
         std::map<std::string, XBot::JointController::Ptr> joint_controller_map);
     
+    void XBotUpdate();
+    
 protected:
 
 private:

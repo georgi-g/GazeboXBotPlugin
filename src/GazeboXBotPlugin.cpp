@@ -161,6 +161,7 @@ bool gazebo::GazeboXBotPlugin::loadJoints(YAML::Node& root)
 
     // Gazebo joint map
     std::map<std::string, gazebo::physics::JointPtr> _jointMap;
+    std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;
     
     // iterate over Gazebo model Joint vector and store Joint pointers in a map
     const gazebo::physics::Joint_V & gazebo_models_joints = _model->GetJoints();
@@ -364,9 +365,7 @@ void gazebo::GazeboXBotPlugin::XBotUpdate(const common::UpdateInfo & _info)
 
     }
 
-    for( auto& pair : _joint_controller_map ){
-        pair.second->sendControlInput();
-    }
+    _xbot_joint->XBotUpdate();
 }
 
 void gazebo::GazeboXBotPlugin::Reset()

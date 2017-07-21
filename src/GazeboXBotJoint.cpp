@@ -21,6 +21,13 @@ void gazebo::GazeboXBotJoint::setRobot(
     _joint_controller_map = joint_controller_map;
 }
 
+void gazebo::GazeboXBotJoint::XBotUpdate()
+{
+    for( auto& pair : _joint_controller_map ){
+        pair.second->sendControlInput();
+    }
+}
+
 gazebo::physics::JointPtr gazebo::GazeboXBotJoint::getJoint(int joint_id)
 {
     if (!_robot)

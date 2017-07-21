@@ -137,9 +137,6 @@ private:
     std::shared_ptr<GazeboXBotImu> _xbot_imu;
     std::shared_ptr<GazeboXBotFt> _xbot_ft;
     
-    // Gazebo joint map
-    std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;
-
     // model
     physics::ModelPtr _model;
 
