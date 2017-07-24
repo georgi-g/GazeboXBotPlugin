@@ -121,9 +121,6 @@ private:
     // previous iteration time (for keeping 1kHz control rate)
     double _previous_time;
 
-    // robot map
-    std::map<std::string, std::vector<int>> _XBotRobot;
-
     // path to config file
     std::string _path_to_config;
 
