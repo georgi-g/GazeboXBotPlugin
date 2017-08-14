@@ -49,6 +49,9 @@ target_link_libraries(JointImpedanceController JointController ${GAZEBO_LIBRARIE
 add_library(DefaultGazeboPID SHARED src/DefaultGazeboPID.cpp)
 target_link_libraries(DefaultGazeboPID JointController ${GAZEBO_LIBRARIES} )
 
+add_library(GazeboXBotHand SHARED src/GazeboXBotHand.cpp)
+target_link_libraries(GazeboXBotHand ${GAZEBO_LIBRARIES} )
+
 # GazeboXBotPlugin
 add_library(GazeboXBotPlugin SHARED src/GazeboXBotPlugin.cpp)
 target_link_libraries(GazeboXBotPlugin ${GAZEBO_LIBRARIES}
@@ -60,6 +63,7 @@ target_link_libraries(GazeboXBotPlugin ${GAZEBO_LIBRARIES}
                                        JointController
                                        DefaultGazeboPID
                                        JointImpedanceController
+                                       GazeboXBotHand
                                        )
 
 install(TARGETS GazeboXBotPlugin RUNTIME LIBRARY DESTINATION lib)
@@ -83,3 +87,4 @@ install(DIRECTORY include/
         FILES_MATCHING PATTERN "*.h*")
 
 
+install(TARGETS GazeboXBotHand RUNTIME LIBRARY DESTINATION lib)
