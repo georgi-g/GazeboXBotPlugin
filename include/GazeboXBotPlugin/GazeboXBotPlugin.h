@@ -37,8 +37,7 @@
 
 #include <GazeboXBotPlugin/JointController.h>
 #include <GazeboXBotPlugin/CallbackHelper.h>
-#include <std_msgs/Bool.h>
-#include <ros/ros.h>
+#include <GazeboXBotPlugin/GazeboXBotHand.h>
 
 
 namespace gazebo
@@ -47,8 +46,7 @@ class GazeboXBotPlugin :
     public ModelPlugin,
     public XBot::IXBotJoint, 
     public XBot::IXBotIMU,
-    public XBot::IXBotFT,
-    public XBot::IXBotHand
+    public XBot::IXBotFT
 
 {
 
@@ -111,10 +109,6 @@ private:
     void close_all();
 
     double get_time();
-    
-    void initGrasping();
-    
-    void grasp_status_Callback(const std_msgs::Bool::ConstPtr& msg, int hand_id);
 
 
     // xbot robot
@@ -141,6 +135,8 @@ private:
     // Gazebo joint names vector
     std::vector<std::string> _jointNames;
 
+    std::shared_ptr<GazeboXBotHand> _xbot_hand;
+    
     // Gazebo joint map
     std::map<std::string, gazebo::physics::JointPtr> _jointMap;
     std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;
@@ -170,14 +166,6 @@ private:
     std::map<int, gazebo::sensors::ImuSensorPtr> _imu_gazebo_map;
     // ft callback helpers
     std::map<int, gazebo::sensors::ForceTorqueSensorPtr> _ft_gazebo_map;
-    
-    
-    //grasping
-    std::map<int, ros::Publisher> _grasp;
-    std::map<int, ros::Subscriber> _state_grasp;
-    std::map<int, bool> _status_grasp;
-        
-    std::shared_ptr<ros::NodeHandle> _nh;
 
     // NOTE IXBotJoint getters
     virtual bool get_link_pos(int joint_id, double& link_pos) final;
@@ -242,11 +230,6 @@ private:
     virtual bool get_imu_fault(int imu_id, double& fault) final;
 
     virtual bool get_imu_rtt(int imu_id, double& rtt) final;
-    
-    //NOTE IXBotHand
-    virtual bool grasp(int hand_id, double grasp_percentage) final;
-    
-    virtual double get_grasp_state(int hand_id) final;
 
 
 };
