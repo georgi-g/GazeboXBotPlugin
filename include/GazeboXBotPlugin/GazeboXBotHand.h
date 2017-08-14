@@ -1,6 +1,6 @@
 
-#ifndef __GAZEBO_XBOT_JOINT_H__
-#define __GAZEBO_XBOT_JOINT_H__
+#ifndef __GAZEBO_XBOT_HAND_H__
+#define __GAZEBO_XBOT_HAND_H__
 
 #include <XBotCore-interfaces/All.h>
 
