@@ -40,6 +40,7 @@
 #include <GazeboXBotPlugin/GazeboXBotJoint.h>
 #include <GazeboXBotPlugin/GazeboXBotImu.h>
 #include <GazeboXBotPlugin/GazeboXBotFt.h>
+#include <GazeboXBotPlugin/GazeboXBotHand.h>
 
 
 namespace gazebo
@@ -127,7 +128,9 @@ private:
     std::shared_ptr<GazeboXBotJoint> _xbot_joint;
     std::shared_ptr<GazeboXBotImu> _xbot_imu;
     std::shared_ptr<GazeboXBotFt> _xbot_ft;
+    std::shared_ptr<GazeboXBotHand> _xbot_hand;
     
+
     // model
     physics::ModelPtr _model;
 
