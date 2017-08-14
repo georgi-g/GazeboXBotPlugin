@@ -1,0 +1,56 @@
+#ifndef __GAZEBO_XBOT_FT_H__
+#define __GAZEBO_XBOT_FT_H__
+
+#include <gazebo/sensors/ForceTorqueSensor.hh>
+
+#include <XBotCore-interfaces/All.h>
+
+#include <XBotInterface/XBotInterface.h>
+
+namespace gazebo
+{
+class GazeboXBotFt :
+    public XBot::IXBotFT
+
+{
+
+public :
+    /**
+     * @brief constructor
+     *
+     */
+    GazeboXBotFt();
+
+    /**
+     * @brief destructor
+     *
+     */
+    virtual ~GazeboXBotFt();
+
+    bool loadFTSensors(
+        XBot::RobotInterface::Ptr robot,
+        gazebo::sensors::Sensor_V& _sensors_attached_to_robot);
+
+protected:
+
+private:
+
+    // xbot robot
+    XBot::RobotInterface::Ptr _robot;
+
+    // ft callback helpers
+    std::map<int, gazebo::sensors::ForceTorqueSensorPtr> _ft_gazebo_map;
+
+    // NOTE IXBotFT
+    
+    virtual bool get_ft(int ft_id, std::vector< double >& ft, int channels = 6) final;
+
+    virtual bool get_ft_fault(int ft_id, double& fault) final;
+
+    virtual bool get_ft_rtt(int ft_id, double& rtt) final;
+    
+};
+
+}
+
+#endif

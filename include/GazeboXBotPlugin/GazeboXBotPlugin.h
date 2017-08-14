@@ -37,18 +37,16 @@
 
 #include <GazeboXBotPlugin/JointController.h>
 #include <GazeboXBotPlugin/CallbackHelper.h>
-#include <std_msgs/Bool.h>
-#include <ros/ros.h>
+#include <GazeboXBotPlugin/GazeboXBotJoint.h>
+#include <GazeboXBotPlugin/GazeboXBotImu.h>
+#include <GazeboXBotPlugin/GazeboXBotFt.h>
+#include <GazeboXBotPlugin/GazeboXBotHand.h>
 
 
 namespace gazebo
 {
 class GazeboXBotPlugin :
-    public ModelPlugin,
-    public XBot::IXBotJoint, 
-    public XBot::IXBotIMU,
-    public XBot::IXBotFT,
-    public XBot::IXBotHand
+    public ModelPlugin
 
 {
 
@@ -102,19 +100,11 @@ private:
 
     bool loadPlugins();
     
-    bool loadFTSensors();
-
-    bool loadImuSensors();
-
     bool initPlugins();
 
     void close_all();
 
     double get_time();
-    
-    void initGrasping();
-    
-    void grasp_status_Callback(const std_msgs::Bool::ConstPtr& msg, int hand_id);
 
 
     // xbot robot
@@ -132,18 +122,14 @@ private:
     // previous iteration time (for keeping 1kHz control rate)
     double _previous_time;
 
-    // robot map
-    std::map<std::string, std::vector<int>> _XBotRobot;
-
     // path to config file
     std::string _path_to_config;
 
-    // Gazebo joint names vector
-    std::vector<std::string> _jointNames;
-
-    // Gazebo joint map
-    std::map<std::string, gazebo::physics::JointPtr> _jointMap;
-    std::map<std::string, XBot::JointController::Ptr> _joint_controller_map;
+    std::shared_ptr<GazeboXBotJoint> _xbot_joint;
+    std::shared_ptr<GazeboXBotImu> _xbot_imu;
+    std::shared_ptr<GazeboXBotFt> _xbot_ft;
+    std::shared_ptr<GazeboXBotHand> _xbot_hand;
+    
 
     // model
     physics::ModelPtr _model;
@@ -159,96 +145,6 @@ private:
 
     // gazebo transport node
     gazebo::transport::NodePtr _node;
-    
-    // gazebo sensors
-    gazebo::sensors::Sensor_V _sensors;
-    
-    // gazebo sensors attached to the current robot
-    gazebo::sensors::Sensor_V _sensors_attached_to_robot;
-    
-    // imu callback helpers
-    std::map<int, gazebo::sensors::ImuSensorPtr> _imu_gazebo_map;
-    // ft callback helpers
-    std::map<int, gazebo::sensors::ForceTorqueSensorPtr> _ft_gazebo_map;
-    
-    
-    //grasping
-    std::map<int, ros::Publisher> _grasp;
-    std::map<int, ros::Subscriber> _state_grasp;
-    std::map<int, bool> _status_grasp;
-        
-    std::shared_ptr<ros::NodeHandle> _nh;
-
-    // NOTE IXBotJoint getters
-    virtual bool get_link_pos(int joint_id, double& link_pos) final;
-
-    virtual bool get_motor_pos(int joint_id, double& motor_pos) final;
-
-    virtual bool get_link_vel(int joint_id, double& link_vel) final;
-
-    virtual bool get_motor_vel(int joint_id, double& motor_vel) final;
-
-    virtual bool get_torque(int joint_id, double& torque) final;
-
-    virtual bool get_temperature(int joint_id, double& temperature) final;
-
-    virtual bool get_gains(int joint_id, std::vector<double>& gain_vector) final;
-
-    virtual bool get_fault(int joint_id, double& fault) final;
-
-    virtual bool get_rtt(int joint_id, double& rtt) final;
-
-    virtual bool get_op_idx_ack(int joint_id, double& op_idx_ack) final;
-
-    virtual bool get_aux(int joint_id, double& aux) final;
-
-    virtual bool get_pos_ref(int joint_id, double& pos_ref) final;
-
-    virtual bool get_vel_ref(int joint_id, double& vel_ref) final;
-
-    virtual bool get_tor_ref(int joint_id, double& tor_ref) final;
-
-    // NOTE IXBotJoint setters
-    virtual bool set_pos_ref(int joint_id, const double& pos_ref) final;
-
-    virtual bool set_vel_ref(int joint_id, const double& vel_ref) final;
-
-    virtual bool set_tor_ref(int joint_id, const double& tor_ref) final;
-
-    virtual bool set_gains(int joint_id, const std::vector<double>& gains) final;
-
-    virtual bool set_fault_ack(int joint_id, const double& fault_ack) final;
-
-    virtual bool set_ts(int joint_id, const double& ts) final;
-
-    virtual bool set_op_idx_aux(int joint_id, const double& op_idx_aux) final;
-
-    virtual bool set_aux(int joint_id, const double& aux) final;
-
-    // NOTE IXBotFT
-    
-    virtual bool get_ft(int ft_id, std::vector< double >& ft, int channels = 6) final;
-
-    virtual bool get_ft_fault(int ft_id, double& fault) final;
-
-    virtual bool get_ft_rtt(int ft_id, double& rtt) final;
-    
-    
-    // NOTE IXBotIMU 
-    virtual bool get_imu(int imu_id, std::vector< double >& lin_acc,
-                         std::vector< double >& ang_vel,
-                         std::vector< double >& quaternion) final;
-
-    virtual bool get_imu_fault(int imu_id, double& fault) final;
-
-    virtual bool get_imu_rtt(int imu_id, double& rtt) final;
-    
-    //NOTE IXBotHand
-    virtual bool grasp(int hand_id, double grasp_percentage) final;
-    
-    virtual double get_grasp_state(int hand_id) final;
-
-
 };
 
 // Register this plugin with the simulator
